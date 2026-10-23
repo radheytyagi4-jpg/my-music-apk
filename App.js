@@ -1,13 +1,13 @@
 import { StyleSheet } from 'react-native';
 
 // pages
-// import Register from './pages/Register.jsx'
-import Home from './pages/Home.jsx'
+// import Home from './pages/Home.jsx'
+import Register from './pages/Register.jsx';
 
 
 export default function App() {
   return(
-    <Home/>
+    <Register/>
   )
 }
 
