@@ -5,6 +5,7 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Register" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="Player" options={{ presentation: "modal" }} />
     </Stack>
   );
 }

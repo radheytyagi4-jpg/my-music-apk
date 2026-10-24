@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { VerticalPlayer } from "../../components/Player";
+import { MiniPlayer } from "../../components/MiniPlayer";
 
 export default function Layout() {
   return (
@@ -51,7 +51,7 @@ export default function Layout() {
       </Tabs>
 
       <View style={{ position: "absolute", left: 0, right: 0, bottom: 65 }}>
-        <VerticalPlayer img="https://picsum.photos/seed/stay/600/600" title="Volume One" artist="Honey Singh" />
+        < MiniPlayer img="https://picsum.photos/seed/stay/600/600" tittle="Volume One" artist="Honey Singh" />
       </View>
     </View>
   );
