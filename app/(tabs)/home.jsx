@@ -4,10 +4,12 @@ import { SongCard } from "../../components/SongCard.jsx";
 
 export default function Home() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Home</Text>
-      <SongCard />
-    </View>
+    <>
+      <View style={styles.container}>
+        <Text style={styles.heading}>Home</Text>
+        <SongCard />
+      </View>
+    </>
   );
 }
 

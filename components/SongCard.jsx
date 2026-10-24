@@ -8,68 +8,18 @@ import {
 } from "react-native";
 
 export function SongCard() {
-  const music = [
-    {
-      id: "1",
-      title: "Sunset Vibes",
-      artist: "Artist 1",
-      img: require("../assets/dan-begel-X2IppAGHlMQ-unsplash.jpg"),
-    },
-    {
-      id: "2",
-      title: "Midnight Dreams",
-      artist: "Artist 2",
-      img: require("../assets/fabio-sasso-Gi-HkcQRyfE-unsplash.jpg"),
-    },
-    {
-      id: "3",
-      title: "Lost in Music",
-      artist: "Artist 3",
-      img: require("../assets/insung-yoon-PJLdikFrvT8-unsplash.jpg"),
-    },
-    {
-      id: "4",
-      title: "Golden Hour",
-      artist: "Artist 4",
-      img: require("../assets/dan-begel-X2IppAGHlMQ-unsplash.jpg"),
-    },
-    {
-      id: "5",
-      title: "Dreamscape",
-      artist: "Artist 5",
-      img: require("../assets/fabio-sasso-Gi-HkcQRyfE-unsplash.jpg"),
-    },
-    {
-      id: "6",
-      title: "Ocean Eyes",
-      artist: "Artist 6",
-      img: require("../assets/insung-yoon-PJLdikFrvT8-unsplash.jpg"),
-    },
-    {
-      id: "7",
-      title: "Night Drive",
-      artist: "Artist 7",
-      img: require("../assets/dan-begel-X2IppAGHlMQ-unsplash.jpg"),
-    },
-    {
-      id: "8",
-      title: "Better Days",
-      artist: "Artist 8",
-      img: require("../assets/fabio-sasso-Gi-HkcQRyfE-unsplash.jpg"),
-    },
-    {
-      id: "9",
-      title: "Slow Motion",
-      artist: "Artist 9",
-      img: require("../assets/insung-yoon-PJLdikFrvT8-unsplash.jpg"),
-    },
-    {
-      id: "10",
-      title: "After Hours",
-      artist: "Artist 10",
-      img: require("../assets/dan-begel-X2IppAGHlMQ-unsplash.jpg"),
-    },
-  ];
+const music = [
+  { id: "1",  title: "Blinding Lights", artist: "The Weeknd",                   img: "https://picsum.photos/seed/blinding/600/600" },
+  { id: "2",  title: "Shape of You",    artist: "Ed Sheeran",                   img: "https://picsum.photos/seed/shape/600/600" },
+  { id: "3",  title: "Someone Like You",artist: "Adele",                        img: "https://picsum.photos/seed/someone/600/600" },
+  { id: "4",  title: "Believer",        artist: "Imagine Dragons",              img: "https://picsum.photos/seed/believer/600/600" },
+  { id: "5",  title: "Levitating",      artist: "Dua Lipa",                     img: "https://picsum.photos/seed/levitating/600/600" },
+  { id: "6",  title: "Perfect",         artist: "Ed Sheeran",                   img: "https://picsum.photos/seed/perfect/600/600" },
+  { id: "7",  title: "Stay",            artist: "The Kid LAROI, Justin Bieber", img: "https://picsum.photos/seed/stay/600/600" },
+  { id: "8",  title: "As It Was",       artist: "Harry Styles",                 img: "https://picsum.photos/seed/asitwas/600/600" },
+  { id: "9",  title: "Cold Heart",      artist: "Elton John, Dua Lipa",         img: "https://picsum.photos/seed/coldheart/600/600" },
+  { id: "10", title: "Counting Stars",  artist: "OneRepublic",                  img: "https://picsum.photos/seed/stars/600/600" },
+];
 
   return (
     <FlatList
