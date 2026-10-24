@@ -1,23 +1,26 @@
-import {Text, View} from 'react-native'
-import {SongCard} from '../../components/SongCard.jsx'
+
+import { View, Text, StyleSheet } from "react-native";
+import { SongCard } from "../../components/SongCard.jsx";
 
 export default function Home() {
   return (
     <View style={styles.container}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Home</Text>
-        <SongCard style={styles.card}/>
+      <Text style={styles.heading}>Home</Text>
+      <SongCard />
     </View>
-  )
+  );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: 20,
-    padding: 20,
+    flex: 1,
+    backgroundColor: "#111",
   },
-  card: {
-    margin:20,
-    padding: 10,
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1DB954",
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
-}
+});
