@@ -51,7 +51,7 @@ export default function Layout() {
       </Tabs>
 
       <View style={{ position: "absolute", left: 0, right: 0, bottom: 65 }}>
-        < MiniPlayer img="https://picsum.photos/seed/stay/600/600" tittle="Volume One" artist="Honey Singh" />
+      <MiniPlayer/>
       </View>
     </View>
   );
