@@ -1,39 +1,65 @@
 import { View, Text, Image, Pressable } from "react-native";
-import { useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Slider from "@react-native-community/slider";
+import { usePlayer } from "../context/PlayerContext.jsx";
 
 export default function Player() {
-  const { img, tittle, artist } = useLocalSearchParams();
+  const { song, toggle, isPlaying, next, previous, position, duration, seek } = usePlayer();
   const router = useRouter();
-  const [isPlaying, setIsPlaying] = useState(false);
+
+  if (!song) return null;
+
+  const fmt = (s = 0) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#111", padding: 24 }}>
-      <Pressable onPress={() => router.back()} >
+      <Pressable onPress={() => router.back()}>
         <Ionicons name="chevron-down" size={30} color="white" />
       </Pressable>
 
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Image
-          source={{ uri: img }}
-          style={{ width: "100%", aspectRatio: 1, borderRadius: 8 }}
+          source={{ uri: song.img }}
+          style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
         />
         <View style={{ alignSelf: "flex-start", marginTop: 24 }}>
-          <Text style={{ color: "white", fontSize: 22, fontWeight: "bold" }}>{tittle}</Text>
-          <Text style={{ color: "#aaa", fontSize: 14, marginTop: 4 }}>{artist}</Text>
+          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>{song.tittle}</Text>
+          <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>{song.artist}</Text>
         </View>
       </View>
-
+      <View style={{ marginBottom: 20 }}>
+        <Slider
+          value={position}
+          minimumValue={0}
+          maximumValue={duration || 1}
+          onSlidingComplete={seek}
+          minimumTrackTintColor="#1DB954"
+          maximumTrackTintColor="#555"
+          thumbTintColor="#fff"
+        />
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={{ color: "#aaa", fontSize: 12 }}>{fmt(position)}</Text>
+          <Text style={{ color: "#aaa", fontSize: 12 }}>{fmt(duration)}</Text>
+        </View>
+      </View>
       <View style={{ flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginBottom: 40 }}>
-        <Ionicons name="play-skip-back" size={36} color="white" />
+        <Pressable onPress={previous}>
+          <Ionicons name="play-skip-back" size={36} color="white" />
+        </Pressable>
         <Pressable
-          onPress={() => setIsPlaying(!isPlaying)}
+          onPress={toggle}
           style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "white", alignItems: "center", justifyContent: "center" }}
         >
           <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="black" />
         </Pressable>
-        <Ionicons name="play-skip-forward" size={36} color="white" />
+        <Pressable onPress={next}>
+          <Ionicons name="play-skip-forward" size={36} color="white" />
+        </Pressable>
       </View>
     </View>
   );

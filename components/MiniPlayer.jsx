@@ -18,7 +18,7 @@ export function MiniPlayer(){
                 <Image source={{uri: song.img}} style={{width: 35, height: 35, margin:10}} />
                 <View style={{flex:1, flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
                     <Text style={{color: 'white', fontSize: 10, fontWeight: 'bold'}}>{song.tittle}</Text>
-                    <Text style={{color: 'white', fontSize: 10}}>{song.artist}</Text>
+                    <Text style={{color: 'white', fontSize: 8}}>{song.artist}</Text>
                 </View>
                     <Pressable onPress={() => toggle()} style={{marginRight: 10}}>
                         <Ionicons name={isPlaying ? "pause" : "play"} size={30} color="white" />

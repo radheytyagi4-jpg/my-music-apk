@@ -1,11 +1,11 @@
-
-import { View, Text, StyleSheet, TextInput, FlatList } from "react-native";
+import { View, Text, StyleSheet, TextInput, FlatList, Pressable, Image } from "react-native";
 import { useState, useEffect } from "react";
+import { usePlayer } from "../../context/PlayerContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Image } from "react-native";
 import Axios from "axios";
 
 export default function Search() {
+  const { playSong } = usePlayer();
   const [search, setSearch] = useState("");
   const [songs, setSongs] = useState([]);
 
@@ -14,23 +14,18 @@ export default function Search() {
       setSongs([]);
       return;
     }
-
     const timer = setTimeout(async () => {
       try {
-        const response = await Axios.get(`http://localhost:4000/api/v1/songs/search?q=${search}`)
+        const response = await Axios.get("http://localhost:4000/api/v1/songs/search", {
+          params: { q: search },
+        });
         setSongs(response.data.data);
-        console.log(response.data.data);
       } catch (error) {
-        console.log(error.response?.data);
+        console.log(error.response?.data || error.message);
       }
     }, 500);
-
     return () => clearTimeout(timer);
-  }
-    , [search]);
-
-  const toMiniPlayer = () => {};
-
+  }, [search]);
 
   return (
     <View style={styles.container}>
@@ -38,66 +33,50 @@ export default function Search() {
         placeholder="Search music..."
         placeholderTextColor="#aaa"
         style={styles.input}
-        onChangeText={(text) => { setSearch(text); }}
+        value={search}
+        onChangeText={setSearch}
       />
-      <Pressable
-        style={{ position: "absolute", top: 30, right: 35 }}
-        onPress={() => { searchSong() }}
-      >
+      <View style={{ position: "absolute", top: 30, right: 35 }}>
         <Ionicons name="search" size={24} color="#aaa" />
-      </Pressable>
-      {
-        !songs.length > 0 ?
-          <View>
-            <Text style={styles.title}>Search Music</Text>
-            <Text style={styles.subtitle}>
-              Find your favourite songs and artists.
-            </Text>
-          </View> :
-          <Pressable
-          onPress={console.log("chalra hoo madrchodd")}
-          >
-          <FlatList
-            data={songs}
-            keyExtactor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
-                <Image source={{ uri: item.img }} style={{ width: 50, height: 50, borderRadius: 4 }} />
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={{ color: "#fff", fontWeight: "bold" }} numberOfLines={1}>{item.tittle}</Text>
-                  <Text style={{ color: "#aaa" }} numberOfLines={1}>{item.artist}</Text>
-                </View>
+      </View>
+
+      {songs.length === 0 ? (
+        <View>
+          <Text style={styles.title}>Search Music</Text>
+          <Text style={styles.subtitle}>Find your favourite songs and artists.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          renderItem={({ item, index }) => (
+            <Pressable
+              onPress={() => playSong(songs, index)}
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+            >
+              <Image source={{ uri: item.img }} style={{ width: 50, height: 50, borderRadius: 4 }} />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "bold" }} numberOfLines={1}>{item.tittle}</Text>
+                <Text style={{ color: "#aaa" }} numberOfLines={1}>{item.artist}</Text>
               </View>
-            )}
-          />
-          </Pressable>
-          }
+            </Pressable>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    height: "100%",
-    backgroundColor: "#121212",
-    padding: 24,
-    // justifyContent: "center",
-  },
-  title: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    color: "#aaa",
-    marginTop: 10,
-  },
+  container: { flex: 1, backgroundColor: "#121212", padding: 24 },
+  title: { color: "#fff", fontSize: 28, fontWeight: "bold" },
+  subtitle: { color: "#aaa", marginTop: 10 },
   input: {
     backgroundColor: "#1e1e1e",
     color: "#fff",
     padding: 10,
     borderRadius: 8,
     marginBottom: 40,
-  }
-});
-
+  },
+}); 
