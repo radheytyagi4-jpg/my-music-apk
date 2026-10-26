@@ -7,7 +7,6 @@ export function SongCard({ songs, onPlay, onEndReached }) {
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       numColumns={2}
-
       keyExtractor={(song) => song.id}
       columnWrapperStyle={styles.row}
       contentContainerStyle={styles.grid}

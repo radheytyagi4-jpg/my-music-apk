@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useState } from 'react'
+import { saveUserId } from "../utils/session";
 import { TextInput, Image, useWindowDimensions } from 'react-native'
 import { Text, View, StyleSheet, Pressable } from 'react-native'
 
@@ -28,7 +29,7 @@ function Register() {
 
             console.log(response.data);
 
-            // Navigate to Home after successful registration
+            await saveUserId(response.data.data.id);
             router.replace("/home");
         } catch (error) {
             console.log(error.response?.data || error.message);

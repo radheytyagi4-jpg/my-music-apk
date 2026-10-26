@@ -1,31 +1,59 @@
-
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Image } from "react-native";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import Axios from "axios";
+import { getUserId } from "../../utils/session";
+import { usePlayer } from "../../context/PlayerContext";
 
 export default function Recent() {
+  const { playSong } = usePlayer();
+  const [songs, setSongs] = useState([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const userId = await getUserId();
+          if (!userId) return;
+          const res = await Axios.get("http://localhost:4000/api/v1/recent", { params: { userId } });
+          setSongs(res.data.data);
+        } catch (error) {
+          console.log(error.response?.data || error.message);
+        }
+      })();
+    }, [])
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Recently Played</Text>
-      <Text style={styles.subtitle}>
-        Your listening history will appear here.
-      </Text>
+      {songs.length === 0 ? (
+        <Text style={styles.subtitle}>Your listening history will appear here.</Text>
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 130 }}
+          renderItem={({ item, index }) => (
+            <Pressable
+              onPress={() => playSong(songs, index)}
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+            >
+              <Image source={{ uri: item.img }} style={{ width: 50, height: 50, borderRadius: 4 }} />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <Text style={{ color: "#fff", fontWeight: "bold" }} numberOfLines={1}>{item.tittle}</Text>
+                <Text style={{ color: "#aaa" }} numberOfLines={1}>{item.artist}</Text>
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#121212",
-    padding: 24,
-    justifyContent: "center",
-  },
-  title: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    color: "#aaa",
-    marginTop: 10,
-  },
+  container: { flex: 1, backgroundColor: "#121212", padding: 24, paddingTop: 40 },
+  title: { color: "#fff", fontSize: 28, fontWeight: "bold" },
+  subtitle: { color: "#aaa", marginTop: 10 },
 });

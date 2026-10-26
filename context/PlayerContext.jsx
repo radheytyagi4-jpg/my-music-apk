@@ -1,5 +1,17 @@
 import { createContext, useEffect, useState, useContext } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
+import Axios from "axios";
+import { getUserId } from "../utils/session";
+
+const saveRecent = async (song) => {
+  try {
+    const userId = await getUserId();
+    if (!userId) return;
+    await Axios.post("http://localhost:4000/api/v1/recent", { userId, song });
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
 const PlayerContext = createContext(null);
 
@@ -17,6 +29,7 @@ export function PlayerProvider({ children }) {
         setIndex(i);
         player.replace({ uri: list[i].audioUrl })
         player.play();
+          saveRecent(list[i]);
     };
 
     const toggle = () => (status.playing ? player.pause() : player.play());
