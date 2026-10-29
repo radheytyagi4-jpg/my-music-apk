@@ -14,7 +14,7 @@ function Register() {
 
 
     const api = axios.create({
-        baseURL: baseUrl,
+        baseURL: `${baseUrl}/users`,
         headers: {
             "Content-Type": "application/json"
         }

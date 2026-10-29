@@ -4,6 +4,7 @@ import { useFocusEffect } from "expo-router";
 import Axios from "axios";
 import { getUserId } from "../../utils/session";
 import { usePlayer } from "../../context/PlayerContext";
+import { baseUrl } from "../../config.js";
 
 export default function Recent() {
   const { playSong } = usePlayer();
@@ -15,7 +16,7 @@ export default function Recent() {
         try {
           const userId = await getUserId();
           if (!userId) return;
-          const res = await Axios.get("http://localhost:4000/api/v1/recent", { params: { userId } });
+          const res = await Axios.get( `${baseUrl}/recent`, { params: { userId } });
           setSongs(res.data.data);
         } catch (error) {
           console.log(error.response?.data || error.message);

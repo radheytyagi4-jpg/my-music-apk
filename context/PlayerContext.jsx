@@ -2,13 +2,13 @@ import { createContext, useEffect, useState, useContext } from "react";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import Axios from "axios";
 import { getUserId } from "../utils/session";
-import { baseurl } from "../config.js"
+import { baseUrl } from "../config.js"
 
 const saveRecent = async (song) => {
     try {
         const userId = await getUserId();
         if (!userId) return;
-        await Axios.post( baseurl , { userId, song });
+        await Axios.post( baseUrl , { userId, song });
     } catch (error) {
         console.log(error.response?.data || error.message);
     }

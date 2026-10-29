@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { usePlayer } from "../../context/PlayerContext";
 import { Ionicons } from "@expo/vector-icons";
 import Axios from "axios";
+import { baseUrl } from "../../config.js";
 
 export default function Search() {
   const { playSong } = usePlayer();
@@ -16,7 +17,7 @@ export default function Search() {
     }
     const timer = setTimeout(async () => {
       try {
-        const response = await Axios.get("http://localhost:4000/api/v1/songs/search", {
+        const response = await Axios.get(`${baseUrl}/songs/search`, {
           params: { q: search },
         });
         setSongs(response.data.data);
