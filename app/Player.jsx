@@ -27,7 +27,7 @@ export default function Player() {
           source={{ uri: song.img }}
           style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
         />
-        <View style={{ alignSelf: "flex-start", marginTop: 24 }}>
+        <View style={{ alignSelf: "flex-start", marginTop: 24, marginLeft:40}}>
           <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>{song.tittle}</Text>
           <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>{song.artist}</Text>
         </View>

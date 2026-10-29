@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Axios from "axios";
 import { SongCard } from "../../components/SongCard.jsx";
 import { usePlayer } from "../../context/PlayerContext";
+import { baseUrl } from "../../config.js";
 
 export default function Home() {
   const { playSong } = usePlayer();
@@ -18,7 +19,7 @@ export default function Home() {
       const query = queries[Math.floor(Math.random() * queries.length)];
 
       const res = await Axios.get(
-        "http://localhost:4000/api/v1/songs/search",
+        `${baseUrl}/songs/search`,
         { params: { q: query } }
       );
 
@@ -60,10 +61,10 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#111" },
   heading: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#1DB954",
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingTop: 45,
   },
 });

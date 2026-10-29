@@ -37,7 +37,7 @@ export default function Search() {
         value={search}
         onChangeText={setSearch}
       />
-      <View style={{ position: "absolute", top: 30, right: 35 }}>
+      <View style={{ position: "absolute", top: 56, right: 45 }}>
         <Ionicons name="search" size={24} color="#aaa" />
       </View>
 
@@ -70,7 +70,7 @@ export default function Search() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#121212", padding: 24 },
+  container: { flex: 1, backgroundColor: "#121212", padding: 30, },
   title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
   subtitle: { color: "#aaa", marginTop: 10 },
   input: {
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     padding: 10,
     borderRadius: 8,
-    marginBottom: 40,
+    marginTop:20,
+    marginBottom: 30,
   },
 }); 

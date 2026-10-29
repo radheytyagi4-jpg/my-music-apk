@@ -16,7 +16,7 @@ export default function Recent() {
         try {
           const userId = await getUserId();
           if (!userId) return;
-          const res = await Axios.get( `${baseUrl}/recent`, { params: { userId } });
+          const res = await Axios.get( `${baseUrl}/recent`, { params: { userId, } });
           setSongs(res.data.data);
         } catch (error) {
           console.log(error.response?.data || error.message);

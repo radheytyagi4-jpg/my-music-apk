@@ -27,7 +27,7 @@ export function SongCard({ songs, onPlay, onEndReached }) {
 const styles = StyleSheet.create({
   grid: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 },
   row: { justifyContent: "space-between", marginBottom: 16 },
-  card: { width: "48%", backgroundColor: "#3C2A20", borderRadius: 14, overflow: "hidden" },
+  card: { width: "48%", backgroundColor: "#152114", borderRadius: 14, overflow: "hidden" },
   cover: { width: "100%", height: 100 },
   details: { paddingHorizontal: 11, paddingVertical: 12 },
   tittle: { color: "#F7F1E3", fontSize: 15, fontWeight: "700" },

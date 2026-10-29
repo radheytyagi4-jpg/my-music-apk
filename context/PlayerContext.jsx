@@ -1,113 +1,174 @@
-import { createContext, useEffect, useState, useContext } from "react";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
+import {
+  createContext,
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+} from "react";
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  setAudioModeAsync,
+} from "expo-audio";
 import Axios from "axios";
 import { getUserId } from "../utils/session";
-import { baseUrl } from "../config.js"
-
-const saveRecent = async (song) => {
-    try {
-        const userId = await getUserId();
-        if (!userId) return;
-        await Axios.post( baseUrl , { userId, song });
-    } catch (error) {
-        console.log(error.response?.data || error.message);
-    }
-};
+import { baseUrl } from "../config.js";
 
 const PlayerContext = createContext(null);
 
+const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
+
+const getRandomQuery = (song) => {
+  const title = song?.tittle || song?.title || "";
+  const random =
+    randomLetters[Math.floor(Math.random() * randomLetters.length)];
+
+  return `${random} ${title}`.trim();
+};
+
+const saveRecent = async (song) => {
+  try {
+    const userId = await getUserId();
+
+    if (!userId) return;
+
+    await Axios.post(`${baseUrl}/recent`, {
+      userId,
+      song,
+    });
+  } catch (error) {
+    console.log("Save recent error:", error.response?.data || error.message);
+  }
+};
+
 export function PlayerProvider({ children }) {
-    const player = useAudioPlayer(null);
-    const status = useAudioPlayerStatus(player);
-    const [queue, setQueue] = useState([]);
-    const [index, setIndex] = useState(-1);
-    const seek = (seconds) => player.seekTo(seconds)
+  const player = useAudioPlayer(null);
+  const status = useAudioPlayerStatus(player);
 
-    const song = queue[index];
+  const [queue, setQueue] = useState([]);
+  const [index, setIndex] = useState(-1);
 
-    const playSong = (list, i) => {
-        setQueue(list);
-        setIndex(i);
-        player.replace({ uri: list[i].audioUrl })
-        player.play();
-        saveRecent(list[i]);
-    };
+  const song = queue[index];
+  const isLoadingNext = useRef(false);
 
-    const toggle = () => (status.playing ? player.pause() : player.play());
-    const next = async () => {
-        if (index < queue.length - 1) {
-            playSong(queue, index + 1);
-            return;
-        }
+  useEffect(() => {
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "doNotMix",
+    }).catch((error) => {
+      console.log("Audio mode error:", error);
+    });
+  }, []);
 
-        if (!song) return;
+  const playSong = (list, i) => {
+    if (!list?.[i]?.audioUrl) return;
 
-        const related = await fetchRelatedSongs(song);
+    const selectedSong = list[i];
 
-        if (related.length > 0) {
-            const shuffled = related.sort(() => Math.random() - 0.5);
-            playSong(shuffled, 0);
-        }
-    };
-    const previous = () => {
-        if (index > 0) {
-            playSong(queue, index - 1)
-        }
-    };
+    setQueue(list);
+    setIndex(i);
 
-    useEffect(() => {
-        if (status.didJustFinish) next();
-    }, [status.didJustFinish])
+    player.replace({ uri: selectedSong.audioUrl });
 
-    const fetchRelatedSongs = async (song) => {
-        try {
-            const getRandomQuery = (song) => {
-                const title = song?.tittle || song?.title || "";
+    // player.setActiveForLockScreen(true, {
+    //   title: selectedSong.title || selectedSong.tittle || "Unknown Song",
+    //   artist: selectedSong.artist || "Unknown Artist",
+    //   artworkUrl: selectedSong.image || selectedSong.img,
+    // });
 
-                const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
+    player.play();
+    saveRecent(selectedSong);
+  };
 
-                const random =
-                    randomLetters[Math.floor(Math.random() * randomLetters.length)];
+  const toggle = () => {
+    if (status.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
 
-                return `${random} ${title}`;
-            };
-            const response = await Axios.get(
-                "http://localhost:4000/api/v1/songs/search",
-                {
-                    params: { q: getRandomQuery(song) }
-                }
-            );
+  const fetchRelatedSongs = async (currentSong) => {
+    try {
+      const response = await Axios.get(`${baseUrl}/songs/search`, {
+        params: { q: getRandomQuery(currentSong) },
+      });
 
-            const songs = response.data.data || [];
+      const results = response.data.data || [];
 
-            const currentTitle = song.tittle?.toLowerCase().trim();
+      return results.filter(
+        (item) =>
+          item.audioUrl &&
+          String(item.id) !== String(currentSong?.id)
+      );
+    } catch (error) {
+      console.log(
+        "Related songs error:",
+        error.response?.data || error.message
+      );
+      return [];
+    }
+  };
 
-            const differentSongs = songs.filter(
-                (item) =>
-                    item.audioUrl &&
-                    item.tittle?.toLowerCase().trim() !== currentTitle
-            );
+  const next = async () => {
+    if (index < queue.length - 1) {
+      playSong(queue, index + 1);
+      return;
+    }
 
+    if (!song || isLoadingNext.current) return;
 
-            return differentSongs.sort(() => Math.random() - 0.5);
-        } catch (error) {
-            console.log("Related songs error:", error.message);
-            return [];
-        }
-    };
+    isLoadingNext.current = true;
 
-    return (
-        <PlayerContext.Provider
-            value={{
-                song,
-                isPlaying: status.playing,
-                position: status.currentTime,
-                duration: status.duration,
-                playSong, toggle, next, previous, seek,
-            }}>
-            {children}
-        </PlayerContext.Provider>
-    );
+    try {
+      const relatedSongs = await fetchRelatedSongs(song);
+
+      if (relatedSongs.length > 0) {
+        const randomIndex = Math.floor(
+          Math.random() * relatedSongs.length
+        );
+
+        playSong(relatedSongs, randomIndex);
+      }
+    } finally {
+      isLoadingNext.current = false;
+    }
+  };
+
+  const previous = () => {
+    if (index > 0) {
+      playSong(queue, index - 1);
+    }
+  };
+
+  const seek = (seconds) => {
+    player.seekTo(seconds);
+  };
+
+  useEffect(() => {
+    if (status.didJustFinish) {
+      next();
+    }
+  }, [status.didJustFinish]);
+
+  return (
+    <PlayerContext.Provider
+      value={{
+        song,
+        isPlaying: status.playing,
+        position: status.currentTime,
+        duration: status.duration,
+        playSong,
+        toggle,
+        next,
+        previous,
+        seek,
+      }}
+    >
+      {children}
+    </PlayerContext.Provider>
+  );
 }
 
 export const usePlayer = () => useContext(PlayerContext);
