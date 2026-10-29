@@ -28,11 +28,11 @@ export default function Player() {
           style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
         />
         <View style={{ alignSelf: "flex-start", marginTop: 24 }}>
-          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>{song.tittle}</Text>
+          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>{song.tittle}</Text>
           <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>{song.artist}</Text>
         </View>
       </View>
-      <View style={{ marginBottom: 20 }}>
+      <View style={{ marginBottom: 5, marginTop:10 }}>
         <Slider
           value={position}
           minimumValue={0}

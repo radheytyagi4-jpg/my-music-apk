@@ -28,7 +28,7 @@ export default function Recent() {
     <View style={styles.container}>
       <Text style={styles.title}>Recently Played</Text>
       {songs.length === 0 ? (
-        <Text style={styles.subtitle}>Your listening history will appear here.</Text>
+        <Text style={styles.subtitle}>Your Snoopy history will appear here.</Text>
       ) : (
         <FlatList
           data={songs}
@@ -54,6 +54,6 @@ export default function Recent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#121212", padding: 24, paddingTop: 40 },
-  title: { color: "#fff", fontSize: 28, fontWeight: "bold" },
+  title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
   subtitle: { color: "#aaa", marginTop: 10 },
 });

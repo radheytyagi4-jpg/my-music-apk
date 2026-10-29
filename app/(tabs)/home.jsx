@@ -12,14 +12,30 @@ export default function Home() {
   const loadMore = async () => {
     if (loading.current) return;
     loading.current = true;
+
     try {
-      const res = await Axios.get("http://localhost:4000/api/v1/songs/discover", {
-        params: { count: 12 },
-      });
+      const queries = ["Arijit Singh", "Shreya Ghoshal", "Sonu Nigam", "Atif Aslam"];
+      const query = queries[Math.floor(Math.random() * queries.length)];
+
+      const res = await Axios.get(
+        "http://localhost:4000/api/v1/songs/search",
+        { params: { q: query } }
+      );
+
+      const newSongs = res.data.data.map((s) => ({
+        ...s,
+        title: s.tittle || s.title,
+        artist: s.artist || s.primary_artists,
+        image: s.img || s.image,
+        audioUrl: s.audioUrl || s.media_url,
+      }));
+
       setSongs((prev) => {
         const ids = new Set(prev.map((s) => s.id));
         const artists = new Set(prev.map((s) => s.artist));
-        const fresh = res.data.data.filter((s) => !ids.has(s.id) && !artists.has(s.artist));
+        const fresh = newSongs.filter(
+          (s) => !ids.has(s.id) && !artists.has(s.artist)
+        );
         return [...prev, ...fresh];
       });
     } catch (error) {
@@ -35,7 +51,7 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Home</Text>
+      <Text style={styles.heading}>Snoopy</Text>
       <SongCard songs={songs} onPlay={playSong} onEndReached={loadMore} />
     </View>
   );
@@ -43,5 +59,11 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#111" },
-  heading: { fontSize: 24, fontWeight: "bold", color: "#1DB954", paddingHorizontal: 16, paddingTop: 20 },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1DB954",
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
 });

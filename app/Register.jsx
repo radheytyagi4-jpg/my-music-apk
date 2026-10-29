@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { saveUserId } from "../utils/session";
 import { TextInput, Image, useWindowDimensions } from 'react-native'
 import { Text, View, StyleSheet, Pressable } from 'react-native'
+import { baseUrl } from '../config.js';
 
 function Register() {
     const [name, setName] = useState("");
@@ -11,8 +12,9 @@ function Register() {
     const [error, setError] = useState(null);
     const { width, height } = useWindowDimensions();
 
+
     const api = axios.create({
-        baseURL: 'http://localhost:4000/api/v1',
+        baseURL: baseUrl,
         headers: {
             "Content-Type": "application/json"
         }
@@ -75,6 +77,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden'
     },
     form: {
+        width:300,
         borderColor: "#1DB954",
         borderWidth: 1,
         padding: 17,
@@ -90,11 +93,11 @@ const styles = StyleSheet.create({
         margin: 5
     },
     button: {
-        padding: 10,
-        width: 70,
+        padding: 15,
+        width: 90,
         borderRadius: 5,
-        margin: 5,
-        marginLeft: 60,
+        margin: 8,
+        marginLeft: 90,
         backgroundColor: '#1c4d18'
     },
     buttonPressed: {

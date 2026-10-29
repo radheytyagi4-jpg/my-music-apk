@@ -1,0 +1,1 @@
+export const baseUrl = "https://backend-my-music-1.onrender.com/api/v1"

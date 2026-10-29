@@ -16,7 +16,7 @@ export default function Layout() {
             borderTopColor: "#282828",
             height: 65,
             paddingTop: 8,
-            paddingBottom: 8,
+            paddingBottom: 6,
           },
           tabBarLabelStyle: { fontSize: 12 },
         }}

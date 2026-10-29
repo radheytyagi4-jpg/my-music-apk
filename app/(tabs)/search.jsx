@@ -43,7 +43,7 @@ export default function Search() {
       {songs.length === 0 ? (
         <View>
           <Text style={styles.title}>Search Music</Text>
-          <Text style={styles.subtitle}>Find your favourite songs and artists.</Text>
+          <Text style={styles.subtitle}>Find your favourite songs and artists on Snoopy</Text>
         </View>
       ) : (
         <FlatList
@@ -70,7 +70,7 @@ export default function Search() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#121212", padding: 24 },
-  title: { color: "#fff", fontSize: 28, fontWeight: "bold" },
+  title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
   subtitle: { color: "#aaa", marginTop: 10 },
   input: {
     backgroundColor: "#1e1e1e",
