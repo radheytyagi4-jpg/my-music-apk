@@ -67,7 +67,7 @@ export function MiniPlayer() {
           <Ionicons
             name={isBuffering ? "hourglass-outline" : isPlaying ? "pause" : "play"}
             size={28}
-            color="#C7F464"
+            color="#1DB954"
           />
         </Pressable>
       </View>
