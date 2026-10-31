@@ -31,7 +31,7 @@ const normalizeSong = (song) => {
 
   return {
     ...song,
-    id: String(song.id ?? song.songid ?? title),
+    id: String(song.id ?? song.songid ?? tittle),
     tittle,
     artist: Array.isArray(artistValue)
       ? artistValue.join(", ")
