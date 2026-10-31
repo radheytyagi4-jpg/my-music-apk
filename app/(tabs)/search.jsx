@@ -84,7 +84,7 @@ export default function Search() {
 
       <View style={{ position: "absolute", top: 58, right: 45 }}>
         {loading ? (
-          <ActivityIndicator size="small" color="#C7F464" />
+          <ActivityIndicator size="small" color="#1DB954" />
         ) : (
           <Ionicons name="search" size={24} color="#aaa" />
         )}
@@ -147,7 +147,7 @@ export default function Search() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#121212", padding: 30 },
-  title: { color: "#C7F464", fontSize: 28, fontWeight: "bold" },
+  title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
   subtitle: { color: "#aaa", marginTop: 10 },
   input: {
     backgroundColor: "#1e1e1e",
