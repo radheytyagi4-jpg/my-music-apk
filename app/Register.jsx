@@ -98,10 +98,10 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         margin: 8,
         marginLeft: 90,
-        backgroundColor: '#1c4d18'
+        backgroundColor: '#1DB954'
     },
     buttonPressed: {
-    backgroundColor: '#1a8540', 
+    backgroundColor: '#1DB954', 
     transform: [{ scale: 0.95 }], 
     opacity: 0.85
 },
