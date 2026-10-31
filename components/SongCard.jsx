@@ -82,8 +82,8 @@ export function SongCard({
           )}
 
           <View style={styles.details}>
-            <Text style={styles.title} numberOfLines={1}>
-              {song.tittle || song.title || song.song || "Unknown Song"}
+            <Text style={styles.tittle} numberOfLines={1}>
+              {song.tittle || song.song || "Unknown Song"}
             </Text>
 
             <Text style={styles.artist} numberOfLines={1}>
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 11,
   },
-  title: {
+  tittle: {
     color: "#F7F1E3",
     fontSize: 15,
     fontWeight: "bold",
