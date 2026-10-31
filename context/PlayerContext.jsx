@@ -18,8 +18,33 @@ const PlayerContext = createContext(null);
 
 const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
 
+const normalizeSong = (song) => {
+  if (!song) return null;
+
+  const title =
+    song.title || song.tittle || song.song || "Unknown Song";
+
+  const artistValue =
+    song.artist ||
+    song.primary_artists ||
+    song.singers ||
+    "Unknown Artist";
+
+  return {
+    ...song,
+    id: String(song.id ?? song.songid ?? title),
+    title,
+    tittle: title,
+    artist: Array.isArray(artistValue)
+      ? artistValue.join(", ")
+      : artistValue,
+    img: song.img || song.image || null,
+    audioUrl: song.audioUrl || song.media_url || null,
+  };
+};
+
 const getRandomQuery = (song) => {
-  const title = song?.tittle || song?.title || "";
+  const title = song?.title || song?.tittle || "";
   const random =
     randomLetters[Math.floor(Math.random() * randomLetters.length)];
 
@@ -87,13 +112,15 @@ const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
       });
 
       (res.data.data || []).forEach((r) => {
-        const id = String(r.id);
+        const normalized = normalizeSong(r);
+        const id = normalized?.id;
+
         if (
-          r.audioUrl &&
+          normalized?.audioUrl &&
           !excludeIds.has(id) &&
           !found.some((f) => String(f.id) === id)
         ) {
-          found.push({ ...r, recommended: true });
+          found.push({ ...normalized, recommended: true });
         }
       });
     } catch (error) {
@@ -139,18 +166,26 @@ export function PlayerProvider({ children }) {
   }, []);
 
   const startPlayback = (list, i) => {
-    if (!list?.[i]?.audioUrl) return;
+    const normalizedList = list.map(normalizeSong);
+    const selectedSong = normalizedList[i];
 
-    const selectedSong = list[i];
+    if (!selectedSong?.audioUrl) {
+      console.log("Cannot play song: audio URL is missing", selectedSong);
+      return;
+    }
+
+    try {
+      player.replace({ uri: selectedSong.audioUrl });
+      player.play();
+    } catch (error) {
+      console.log("Audio playback error:", error);
+      return;
+    }
 
     playedRef.current.add(String(selectedSong.id));
 
-    setQueue(list);
+    setQueue(normalizedList);
     setIndex(i);
-
-    player.replace({ uri: selectedSong.audioUrl });
-
-    player.play();
     saveRecent(selectedSong);
   };
 
@@ -175,19 +210,30 @@ export function PlayerProvider({ children }) {
     });
   };
 
-  const playSong = (list, i) => {
-    if (!list?.[i]?.audioUrl) return;
+  const playSong = (songsOrSong, requestedIndex = 0) => {
+    const isPlaylist = Array.isArray(songsOrSong);
+    const list = (isPlaylist ? songsOrSong : [songsOrSong])
+      .filter(Boolean)
+      .map(normalizeSong);
+    const selectedIndex = isPlaylist ? requestedIndex : 0;
+
+    if (!list[selectedIndex]?.audioUrl) {
+      console.log("Cannot play song: audio URL is missing", list[selectedIndex]);
+      return;
+    }
 
     originalRef.current = list;
 
     if (shuffleRef.current) {
-      const first = list[i];
-      const rest = smartShuffle(list.filter((_, k) => k !== i));
+      const first = list[selectedIndex];
+      const rest = smartShuffle(
+        list.filter((_, k) => k !== selectedIndex)
+      );
       startPlayback([first, ...rest], 0);
       injectRecommendations(list);
     } else {
       sessionRef.current++;
-      startPlayback(list, i);
+      startPlayback(list, selectedIndex);
     }
   };
 
@@ -224,7 +270,7 @@ export function PlayerProvider({ children }) {
   const toggle = () => {
     if (status.playing) {
       player.pause();
-    } else {
+    } else if (song?.audioUrl) {
       player.play();
     }
   };
@@ -240,9 +286,9 @@ export function PlayerProvider({ children }) {
         params: { count: 12 },
       });
 
-      const fresh = (response.data.data || []).filter(
-        (item) => item.audioUrl && !seen.has(String(item.id))
-      );
+      const fresh = (response.data.data || [])
+        .map(normalizeSong)
+        .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
 
       if (fresh.length > 0) return smartShuffle(fresh);
     } catch (error) {
@@ -268,9 +314,9 @@ export function PlayerProvider({ children }) {
           params: { q },
         });
 
-        const fresh = (response.data.data || []).filter(
-          (item) => item.audioUrl && !seen.has(String(item.id))
-        );
+        const fresh = (response.data.data || [])
+          .map(normalizeSong)
+          .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
 
         if (fresh.length > 0) return smartShuffle(fresh);
       } catch (error) {
@@ -326,6 +372,8 @@ export function PlayerProvider({ children }) {
       value={{
         song,
         isPlaying: status.playing,
+        isBuffering: status.isBuffering,
+        playbackError: status.error || null,
         position: status.currentTime,
         duration: status.duration,
         shuffle,
