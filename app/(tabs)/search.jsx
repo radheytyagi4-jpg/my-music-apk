@@ -128,7 +128,7 @@ export default function Search() {
               />
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <Text
-                  style={{ color: "#fff", fontWeight: "bold" }}
+                  style={{ color: "#1DB954", fontWeight: "bold" }}
                   numberOfLines={1}
                 >
                   {item.tittle || item.title || item.song || "Unknown Song"}
