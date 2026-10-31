@@ -9,7 +9,7 @@ export function MiniPlayer() {
 
   if (!song) return null;
 
-  const title = song.tittle || song.title || "Unknown Song";
+  const tittle = song.tittle || "Unknown Song";
   const artist = song.artist || "Unknown Artist";
 
   return (
@@ -47,7 +47,7 @@ export function MiniPlayer() {
             style={{ color: "white", fontSize: 12, fontWeight: "bold" }}
             numberOfLines={1}
           >
-            {title}
+            {tittle}
           </Text>
           <Text
             style={{ color: "#BDAA91", fontSize: 10 }}
