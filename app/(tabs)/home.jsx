@@ -195,7 +195,8 @@ export default function Home() {
         .map((song, index) => ({
           ...song,
           id: String(song.id || `${query}-${index}`),
-          title: song.title || song.song || "Unknown Song",
+          tittle: song.tittle || song.title || song.song || "Unknown Song",
+          title: song.tittle || song.title || song.song || "Unknown Song",
           artist:
             song.artist ||
             song.primary_artists ||
