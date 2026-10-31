@@ -83,7 +83,7 @@ export function SongCard({
 
           <View style={styles.details}>
             <Text style={styles.title} numberOfLines={1}>
-              {song.title || song.tittle || song.song || "Unknown Song"}
+              {song.tittle || song.title || song.song || "Unknown Song"}
             </Text>
 
             <Text style={styles.artist} numberOfLines={1}>
