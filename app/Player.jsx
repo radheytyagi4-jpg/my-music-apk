@@ -5,7 +5,18 @@ import Slider from "@react-native-community/slider";
 import { usePlayer } from "../context/PlayerContext.jsx";
 
 export default function Player() {
-  const { song, toggle, isPlaying, next, previous, position, duration, seek } = usePlayer();
+  const {
+    song,
+    toggle,
+    isPlaying,
+    next,
+    previous,
+    position,
+    duration,
+    seek,
+    shuffle,
+    toggleShuffle,
+  } = usePlayer();
   const router = useRouter();
 
   if (!song) return null;
@@ -27,12 +38,18 @@ export default function Player() {
           source={{ uri: song.img }}
           style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
         />
-        <View style={{ alignSelf: "flex-start", marginTop: 24, marginLeft:40}}>
+        <View style={{ alignSelf: "flex-start", marginTop: 24, marginLeft: 40 }}>
           <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>{song.tittle}</Text>
           <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>{song.artist}</Text>
+          {song.recommended && (
+            <Text style={{ color: "#1DB954", fontSize: 11, marginTop: 4 }}>Recommended</Text>
+          )}
         </View>
       </View>
-      <View style={{ marginBottom: 5, marginTop:10 }}>
+        <Pressable onPress={toggleShuffle}>
+          <Ionicons name="shuffle" size={28} color={shuffle ? "#1DB954" : "white"} />
+        </Pressable>
+      <View style={{ marginBottom: 5, marginTop: 10 }}>
         <Slider
           value={position}
           minimumValue={0}

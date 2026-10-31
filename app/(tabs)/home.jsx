@@ -15,7 +15,7 @@ export default function Home() {
     loading.current = true;
 
     try {
-      const queries = ["Arijit Singh", "Shreya Ghoshal", "Sonu Nigam", "Atif Aslam"];
+      const queries = ["Arijit Singh", "rap", "karan-aujla", "anuv-jain", "emenem", "justin-baiber", "taylor-swift", "babbu-maan", "bollywood", "dandha-nayoli", ];
       const query = queries[Math.floor(Math.random() * queries.length)];
 
       const res = await Axios.get(
