@@ -56,7 +56,7 @@ export default function Player() {
               alignItems: "center",
             }}
           >
-            <Ionicons name="musical-notes" size={64} color="#C7F464" />
+            <Ionicons name="musical-notes" size={64} color="#1DB954" />
           </View>
         )}
 
@@ -68,7 +68,7 @@ export default function Player() {
             {artist}
           </Text>
           {song.recommended && (
-            <Text style={{ color: "#C7F464", fontSize: 11, marginTop: 4 }}>
+            <Text style={{ color: "#1DB954", fontSize: 11, marginTop: 4 }}>
               Recommended
             </Text>
           )}
@@ -79,7 +79,7 @@ export default function Player() {
         <Ionicons
           name="shuffle"
           size={28}
-          color={shuffle ? "#C7F464" : "white"}
+          color={shuffle ? "#1DB954" : "white"}
         />
       </Pressable>
 
@@ -89,7 +89,7 @@ export default function Player() {
           minimumValue={0}
           maximumValue={duration || 1}
           onSlidingComplete={seek}
-          minimumTrackTintColor="#C7F464"
+          minimumTrackTintColor="#1DB954"
           maximumTrackTintColor="#555"
           thumbTintColor="#fff"
         />
@@ -123,7 +123,7 @@ export default function Player() {
             width: 64,
             height: 64,
             borderRadius: 32,
-            backgroundColor: "#C7F464",
+            backgroundColor: "#1DB954",
             alignItems: "center",
             justifyContent: "center",
           }}
