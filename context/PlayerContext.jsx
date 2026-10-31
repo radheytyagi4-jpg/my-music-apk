@@ -1,40 +1,46 @@
-  import {
-    createContext,
-    useEffect,
-    useState,
-    useContext,
-    useRef,
-  } from "react";
-  import {
-    useAudioPlayer,
-    useAudioPlayerStatus,
-    setAudioModeAsync,
-  } from "expo-audio";
-  import Axios from "axios";
-  import { getUserId } from "../utils/session";
-  import { baseUrl } from "../config.js";
+import {
+  createContext,
+  useEffect,
+  useState,
+  useContext,
+  useRef,
+} from "react";
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  setAudioModeAsync,
+} from "expo-audio";
+import Axios from "axios";
+import { getUserId } from "../utils/session";
+import { baseUrl } from "../config.js";
 
-  const PlayerContext = createContext(null);
+const PlayerContext = createContext(null);
 
-  const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
+const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
 
-  const normalizeSong = (song) => {
+const normalizeSong = (song) => {
   if (!song) return null;
 
-  const tittle =
-    song.title || song.tittle || song.song || "Unknown Song";
+  const title =
+    song.title ||
+    song.tittle ||
+    song.song ||
+    song.name ||
+    song.song_name ||
+    "Unknown Song";
 
   const artistValue =
     song.artist ||
     song.primary_artists ||
     song.singers ||
+    song.primaryArtists ||
     "Unknown Artist";
-    
+
   return {
     ...song,
-    id: String(song.id ?? song.songid ?? tittle),
-    title: tittle,
-    tittle, 
+    id: String(song.id ?? song.songid ?? title),
+    title,
+    tittle: title,
     artist: Array.isArray(artistValue)
       ? artistValue.join(", ")
       : artistValue,
@@ -43,247 +49,276 @@
   };
 };
 
-  const getRandomQuery = (song) => {
-    const tittle = song?.title || song?.tittle || "";
-    const random =
-      randomLetters[Math.floor(Math.random() * randomLetters.length)];
+const getRandomQuery = (song) => {
+  const title = song?.title || song?.tittle || "";
+  const random =
+    randomLetters[Math.floor(Math.random() * randomLetters.length)];
 
-    return `${random} ${tittle}`.trim();
-  };
+  return `${random} ${title}`.trim();
+};
 
-  const saveRecent = async (song) => {
+const saveRecent = async (song) => {
+  try {
+    const userId = await getUserId();
+    if (!userId) return;
+
+    await Axios.post(`${baseUrl}/recent`, {
+      userId,
+      song,
+    });
+  } catch (error) {
+    console.log("Save recent error:", error.response?.data || error.message);
+  }
+};
+
+const fisherYates = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const smartShuffle = (songs) => {
+  const groups = {};
+  songs.forEach((s) => {
+    const key = s.artist || "unknown";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(s);
+  });
+
+  const placed = [];
+  Object.values(groups).forEach((group) => {
+    const g = fisherYates(group);
+    const offset = Math.random() / g.length;
+    g.forEach((s, i) => {
+      placed.push({
+        s,
+        pos: i / g.length + offset + (Math.random() * 0.2) / g.length,
+      });
+    });
+  });
+
+  return placed.sort((a, b) => a.pos - b.pos).map((p) => p.s);
+};
+
+const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
+  const picks = fisherYates(sourceSongs).slice(0, 3);
+  const found = [];
+
+  for (const s of picks) {
+    const artist = (s.artist || "").split(",")[0].trim();
+    if (!artist) continue;
+
     try {
-      const userId = await getUserId();
+      const res = await Axios.get(`${baseUrl}/songs/search`, {
+        params: { q: artist },
+      });
 
-      if (!userId) return;
+      (res.data.data || []).forEach((r) => {
+        const normalized = normalizeSong(r);
+        const id = normalized?.id;
 
-      await Axios.post(`${baseUrl}/recent`, {
-        userId,
-        song,
+        if (
+          normalized?.audioUrl &&
+          !excludeIds.has(id) &&
+          !found.some((f) => String(f.id) === id)
+        ) {
+          found.push({ ...normalized, recommended: true });
+        }
       });
     } catch (error) {
-      console.log("Save recent error:", error.response?.data || error.message);
+      console.log(
+        "Recommendation error:",
+        error.response?.data || error.message
+      );
     }
-  };
+  }
 
-  const fisherYates = (arr) => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
+  return fisherYates(found).slice(0, count);
+};
 
-  const smartShuffle = (songs) => {
-    const groups = {};
-    songs.forEach((s) => {
-      const key = s.artist || "unknown";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
+export function PlayerProvider({ children }) {
+  const player = useAudioPlayer(null);
+  const status = useAudioPlayerStatus(player);
+
+  const [queue, setQueue] = useState([]);
+  const [index, setIndex] = useState(-1);
+  const [shuffle, setShuffle] = useState(false);
+
+  const song = queue[index];
+  const isLoadingNext = useRef(false);
+
+  const shuffleRef = useRef(false);
+  const originalRef = useRef([]);
+  const indexRef = useRef(-1);
+  const sessionRef = useRef(0);
+  const playedRef = useRef(new Set());
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
+
+  useEffect(() => {
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "doNotMix",
+    }).catch((error) => {
+      console.log("Audio mode error:", error);
     });
+  }, []);
 
-    const placed = [];
-    Object.values(groups).forEach((group) => {
-      const g = fisherYates(group);
-      const offset = Math.random() / g.length;
-      g.forEach((s, i) => {
-        placed.push({
-          s,
-          pos: i / g.length + offset + (Math.random() * 0.2) / g.length,
-        });
-      });
-    });
+  const startPlayback = (list, i) => {
+    const normalizedList = list.map(normalizeSong);
+    const selectedSong = normalizedList[i];
 
-    return placed.sort((a, b) => a.pos - b.pos).map((p) => p.s);
-  };
-
-  const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
-    const picks = fisherYates(sourceSongs).slice(0, 3);
-    const found = [];
-
-    for (const s of picks) {
-      const artist = (s.artist || "").split(",")[0].trim();
-      if (!artist) continue;
-
-      try {
-        const res = await Axios.get(`${baseUrl}/songs/search`, {
-          params: { q: artist },
-        });
-
-        (res.data.data || []).forEach((r) => {
-          const normalized = normalizeSong(r);
-          const id = normalized?.id;
-
-          if (
-            normalized?.audioUrl &&
-            !excludeIds.has(id) &&
-            !found.some((f) => String(f.id) === id)
-          ) {
-            found.push({ ...normalized, recommended: true });
-          }
-        });
-      } catch (error) {
-        console.log(
-          "Recommendation error:",
-          error.response?.data || error.message
-        );
-      }
+    if (!selectedSong?.audioUrl) {
+      console.log("Cannot play song: audio URL is missing", selectedSong);
+      return;
     }
 
-    return fisherYates(found).slice(0, count);
+    console.log("Trying to play:", selectedSong.audioUrl);
+
+    try {
+      player.replace({ uri: selectedSong.audioUrl });
+      player.play();
+    } catch (error) {
+      console.log("Audio playback error:", error);
+      return;
+    }
+
+    playedRef.current.add(String(selectedSong.id));
+
+    setQueue(normalizedList);
+    setIndex(i);
+    saveRecent(selectedSong);
   };
 
-  export function PlayerProvider({ children }) {
-    const player = useAudioPlayer(null);
-    const status = useAudioPlayerStatus(player);
+  const injectRecommendations = async (baseList) => {
+    const session = ++sessionRef.current;
+    const exclude = new Set(baseList.map((s) => String(s.id)));
+    const count = Math.min(5, Math.max(1, Math.floor(baseList.length / 3)));
 
-    const [queue, setQueue] = useState([]);
-    const [index, setIndex] = useState(-1);
-    const [shuffle, setShuffle] = useState(false);
+    const recs = await fetchRecommendations(baseList, exclude, count);
 
-    const song = queue[index];
-    const isLoadingNext = useRef(false);
+    if (!recs.length || session !== sessionRef.current || !shuffleRef.current) {
+      return;
+    }
 
-    const shuffleRef = useRef(false);
-    const originalRef = useRef([]);
-    const indexRef = useRef(-1);
-    const sessionRef = useRef(0);
-    const playedRef = useRef(new Set());
-
-    useEffect(() => {
-      indexRef.current = index;
-    }, [index]);
-
-    useEffect(() => {
-      setAudioModeAsync({
-        playsInSilentMode: true,
-        shouldPlayInBackground: true,
-        interruptionMode: "doNotMix",
-      }).catch((error) => {
-        console.log("Audio mode error:", error);
+    setQueue((prev) => {
+      const out = [...prev];
+      recs.forEach((r, k) => {
+        const at = Math.min(indexRef.current + 3 + k * 4, out.length);
+        out.splice(at, 0, r);
       });
-    }, []);
+      return out;
+    });
+  };
 
-    const startPlayback = (list, i) => {
-      const normalizedList = list.map(normalizeSong);
-      const selectedSong = normalizedList[i];
+  const playSong = (songsOrSong, requestedIndex = 0) => {
+    const isPlaylist = Array.isArray(songsOrSong);
+    const list = (isPlaylist ? songsOrSong : [songsOrSong])
+      .filter(Boolean)
+      .map(normalizeSong);
+    const selectedIndex = isPlaylist ? requestedIndex : 0;
 
-      if (!selectedSong?.audioUrl) {
-        console.log("Cannot play song: audio URL is missing", selectedSong);
-        return;
-      }
+    if (!list[selectedIndex]?.audioUrl) {
+      console.log("Cannot play song: audio URL is missing", list[selectedIndex]);
+      return;
+    }
 
-      try {
-        player.replace({ uri: selectedSong.audioUrl });
-        player.play();
-      } catch (error) {
-        console.log("Audio playback error:", error);
-        return;
-      }
+    originalRef.current = list;
 
-      playedRef.current.add(String(selectedSong.id));
+    if (shuffleRef.current) {
+      const first = list[selectedIndex];
+      const rest = smartShuffle(
+        list.filter((_, k) => k !== selectedIndex)
+      );
+      startPlayback([first, ...rest], 0);
+      injectRecommendations(list);
+    } else {
+      sessionRef.current++;
+      startPlayback(list, selectedIndex);
+    }
+  };
 
-      setQueue(normalizedList);
-      setIndex(i);
-      saveRecent(selectedSong);
-    };
+  const toggleShuffle = () => {
+    const turningOn = !shuffleRef.current;
+    shuffleRef.current = turningOn;
+    setShuffle(turningOn);
 
-    const injectRecommendations = async (baseList) => {
-      const session = ++sessionRef.current;
-      const exclude = new Set(baseList.map((s) => String(s.id)));
-      const count = Math.min(5, Math.max(1, Math.floor(baseList.length / 3)));
+    if (!song) return;
 
-      const recs = await fetchRecommendations(baseList, exclude, count);
+    if (turningOn) {
+      const base = queue.filter((s) => !s.recommended);
+      originalRef.current = base;
 
-      if (!recs.length || session !== sessionRef.current || !shuffleRef.current) {
-        return;
-      }
+      const rest = smartShuffle(base.filter((s) => s.id !== song.id));
+      setQueue([song, ...rest]);
+      setIndex(0);
+      injectRecommendations(base);
+    } else {
+      sessionRef.current++;
+      const original = originalRef.current;
+      const at = original.findIndex((s) => s.id === song.id);
 
-      setQueue((prev) => {
-        const out = [...prev];
-        recs.forEach((r, k) => {
-          const at = Math.min(indexRef.current + 3 + k * 4, out.length);
-          out.splice(at, 0, r);
-        });
-        return out;
-      });
-    };
-
-    const playSong = (songsOrSong, requestedIndex = 0) => {
-      const isPlaylist = Array.isArray(songsOrSong);
-      const list = (isPlaylist ? songsOrSong : [songsOrSong])
-        .filter(Boolean)
-        .map(normalizeSong);
-      const selectedIndex = isPlaylist ? requestedIndex : 0;
-
-      if (!list[selectedIndex]?.audioUrl) {
-        console.log("Cannot play song: audio URL is missing", list[selectedIndex]);
-        return;
-      }
-
-      originalRef.current = list;
-
-      if (shuffleRef.current) {
-        const first = list[selectedIndex];
-        const rest = smartShuffle(
-          list.filter((_, k) => k !== selectedIndex)
-        );
-        startPlayback([first, ...rest], 0);
-        injectRecommendations(list);
-      } else {
-        sessionRef.current++;
-        startPlayback(list, selectedIndex);
-      }
-    };
-
-    const toggleShuffle = () => {
-      const turningOn = !shuffleRef.current;
-      shuffleRef.current = turningOn;
-      setShuffle(turningOn);
-
-      if (!song) return;
-
-      if (turningOn) {
-        const base = queue.filter((s) => !s.recommended);
-        originalRef.current = base;
-
-        const rest = smartShuffle(base.filter((s) => s.id !== song.id));
-        setQueue([song, ...rest]);
+      if (at === -1) {
+        setQueue([song, ...original]);
         setIndex(0);
-        injectRecommendations(base);
       } else {
-        sessionRef.current++;
-        const original = originalRef.current;
-        const at = original.findIndex((s) => s.id === song.id);
-
-        if (at === -1) {
-          setQueue([song, ...original]);
-          setIndex(0);
-        } else {
-          setQueue(original);
-          setIndex(at);
-        }
+        setQueue(original);
+        setIndex(at);
       }
-    };
+    }
+  };
 
-    const toggle = () => {
-      if (status.playing) {
-        player.pause();
-      } else if (song?.audioUrl) {
-        player.play();
-      }
-    };
+  const toggle = () => {
+    if (status.playing) {
+      player.pause();
+    } else if (song?.audioUrl) {
+      player.play();
+    }
+  };
 
-    const fetchFreshSongs = async (currentSong, currentQueue) => {
-      const seen = new Set([
-        ...playedRef.current,
-        ...currentQueue.map((s) => String(s.id)),
-      ]);
+  const fetchFreshSongs = async (currentSong, currentQueue) => {
+    const seen = new Set([
+      ...playedRef.current,
+      ...currentQueue.map((s) => String(s.id)),
+    ]);
 
+    try {
+      const response = await Axios.get(`${baseUrl}/songs/discover`, {
+        params: { count: 12 },
+      });
+
+      const fresh = (response.data.data || [])
+        .map(normalizeSong)
+        .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
+
+      if (fresh.length > 0) return smartShuffle(fresh);
+    } catch (error) {
+      console.log(
+        "Discover error:",
+        error.response?.data || error.message
+      );
+    }
+
+    const firstArtist = (s) => (s?.artist || "").split(",")[0].trim();
+    const artists = currentQueue.map(firstArtist).filter(Boolean);
+    const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+
+    const queries = [
+      firstArtist(currentSong),
+      randomArtist,
+      getRandomQuery(currentSong),
+    ].filter(Boolean);
+
+    for (const q of queries) {
       try {
-        const response = await Axios.get(`${baseUrl}/songs/discover`, {
-          params: { count: 12 },
+        const response = await Axios.get(`${baseUrl}/songs/search`, {
+          params: { q },
         });
 
         const fresh = (response.data.data || [])
@@ -293,101 +328,73 @@
         if (fresh.length > 0) return smartShuffle(fresh);
       } catch (error) {
         console.log(
-          "Discover error:",
+          "Fresh songs error:",
           error.response?.data || error.message
         );
       }
+    }
 
-      const firstArtist = (s) => (s?.artist || "").split(",")[0].trim();
-      const artists = currentQueue.map(firstArtist).filter(Boolean);
-      const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+    return [];
+  };
 
-      const queries = [
-        firstArtist(currentSong),
-        randomArtist,
-        getRandomQuery(currentSong),
-      ].filter(Boolean);
+  const next = async () => {
+    if (index < queue.length - 1) {
+      startPlayback(queue, index + 1);
+      return;
+    }
 
-      for (const q of queries) {
-        try {
-          const response = await Axios.get(`${baseUrl}/songs/search`, {
-            params: { q },
-          });
+    if (!song || isLoadingNext.current) return;
 
-          const fresh = (response.data.data || [])
-            .map(normalizeSong)
-            .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
+    isLoadingNext.current = true;
 
-          if (fresh.length > 0) return smartShuffle(fresh);
-        } catch (error) {
-          console.log(
-            "Fresh songs error:",
-            error.response?.data || error.message
-          );
-        }
+    try {
+      const fresh = await fetchFreshSongs(song, queue);
+
+      if (fresh.length > 0) {
+        startPlayback([...queue, ...fresh], queue.length);
       }
+    } finally {
+      isLoadingNext.current = false;
+    }
+  };
 
-      return [];
-    };
+  const previous = () => {
+    if (index > 0) {
+      startPlayback(queue, index - 1);
+    }
+  };
 
-    const next = async () => {
-      if (index < queue.length - 1) {
-        startPlayback(queue, index + 1);
-        return;
-      }
+  const seek = (seconds) => {
+    player.seekTo(seconds);
+  };
 
-      if (!song || isLoadingNext.current) return;
+  useEffect(() => {
+    if (status.didJustFinish) {
+      next();
+    }
+  }, [status.didJustFinish]);
 
-      isLoadingNext.current = true;
+  return (
+    <PlayerContext.Provider
+      value={{
+        song,
+        isPlaying: status.playing,
+        isBuffering: status.isBuffering,
+        playbackError: status.error || null,
+        position: status.currentTime,
+        duration: status.duration,
+        shuffle,
+        playSong,
+        toggle,
+        toggleShuffle,
+        next,
+        previous,
+        seek,
+      }}
+    >
+      {children}
+    </PlayerContext.Provider>
+  );
+}
 
-      try {
-        const fresh = await fetchFreshSongs(song, queue);
-
-        if (fresh.length > 0) {
-          startPlayback([...queue, ...fresh], queue.length);
-        }
-      } finally {
-        isLoadingNext.current = false;
-      }
-    };
-
-    const previous = () => {
-      if (index > 0) {
-        startPlayback(queue, index - 1);
-      }
-    };
-
-    const seek = (seconds) => {
-      player.seekTo(seconds);
-    };
-
-    useEffect(() => {
-      if (status.didJustFinish) {
-        next();
-      }
-    }, [status.didJustFinish]);
-
-    return (
-      <PlayerContext.Provider
-        value={{
-          song,
-          isPlaying: status.playing,
-          isBuffering: status.isBuffering,
-          playbackError: status.error || null,
-          position: status.currentTime,
-          duration: status.duration,
-          shuffle,
-          playSong,
-          toggle,
-          toggleShuffle,
-          next,
-          previous,
-          seek,
-        }}
-      >
-        {children}
-      </PlayerContext.Provider>
-    );
-  }
-
-  export const usePlayer = () => useContext(PlayerContext);
+export const usePlayer = () => useContext(PlayerContext);

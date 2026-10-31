@@ -161,14 +161,14 @@ export default function Home() {
 
     const selected =
       availableQueries[
-        Math.floor(Math.random() * availableQueries.length)
+      Math.floor(Math.random() * availableQueries.length)
       ];
 
     lastQuery.current = selected;
     return selected;
   };
 
-  const loadSongs = async (mode = "more") => {
+  const loadSongs = async (mode = "more", retryCount = 0) => {
     if (loading.current) return;
 
     loading.current = true;
@@ -184,25 +184,33 @@ export default function Home() {
     try {
       const query = getRandomQuery();
 
-      const response = await axios.get(
-        `${baseUrl}/songs/search`,
-        {
-          params: { q: query },
-        }
-      );
+      const response = await axios.get(`${baseUrl}/songs/search`, {
+        params: { q: query },
+        timeout: 20000, // 20 seconds
+      });
 
       const newSongs = (response.data?.data || [])
-        .map((song, index) => ({
-          ...song,
-          id: String(song.id || `${query}-${index}`),
-          title: song.title || song.song || "Unknown Song",
-          artist:
-            song.artist ||
-            song.primary_artists ||
-            "Unknown Artist",
-          img: song.img || song.image || null,
-          audioUrl: song.audioUrl || song.media_url || null,
-        }))
+        .map((song, index) => {
+          const title =
+            song.title ||
+            song.tittle ||
+            song.song ||
+            song.name ||
+            "Unknown Song";
+
+          return {
+            ...song,
+            id: String(song.id || `${query}-${index}`),
+            title,
+            tittle: title,
+            artist:
+              song.artist ||
+              song.primary_artists ||
+              "Unknown Artist",
+            img: song.img || song.image || null,
+            audioUrl: song.audioUrl || song.media_url || null,
+          };
+        })
         .filter((song) => song.audioUrl);
 
       setSongs((previous) => {
@@ -210,10 +218,7 @@ export default function Home() {
           return newSongs;
         }
 
-        const existingIds = new Set(
-          previous.map((song) => song.id)
-        );
-
+        const existingIds = new Set(previous.map((song) => song.id));
         const freshSongs = newSongs.filter(
           (song) => !existingIds.has(song.id)
         );
@@ -221,6 +226,19 @@ export default function Home() {
         return [...previous, ...freshSongs];
       });
     } catch (error) {
+      const isBadGateway =
+        error.response?.status === 502 ||
+        (typeof error.response?.data === "string" &&
+          error.response.data.includes("Bad Gateway"));
+
+      // Retry up to 2 times on 502 (cold start)
+      if (isBadGateway && retryCount < 2) {
+        console.log(`502 received, retrying... (${retryCount + 1})`);
+        loading.current = false;
+        await new Promise((r) => setTimeout(r, 2500)); // wait 2.5s
+        return loadSongs(mode, retryCount + 1);
+      }
+
       console.log(
         "Song loading error:",
         error.response?.data || error.message

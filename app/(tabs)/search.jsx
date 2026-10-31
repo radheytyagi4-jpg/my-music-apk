@@ -128,10 +128,10 @@ export default function Search() {
               />
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <Text
-                  style={{ color: "#fff", fontWeight: "bold" }}
+                  style={{ color: "#1DB954", fontWeight: "bold" }}
                   numberOfLines={1}
                 >
-                  {item.title || item.tittle || item.song || "Unknown Song"}
+                  {item.tittle || item.song || "Unknown Song"}
                 </Text>
                 <Text style={{ color: "#aaa" }} numberOfLines={1}>
                   {item.artist || item.primary_artists || "Unknown Artist"}

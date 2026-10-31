@@ -72,7 +72,7 @@ export default function Recent() {
                   style={{ color: "#fff", fontWeight: "bold" }}
                   numberOfLines={1}
                 >
-                  {item.title || item.tittle || item.song || "Unknown Song"}
+                  {item.tittle || item.song || "Unknown Song"}
                 </Text>
                 <Text style={{ color: "#aaa" }} numberOfLines={1}>
                   {item.artist || item.primary_artists || "Unknown Artist"}
