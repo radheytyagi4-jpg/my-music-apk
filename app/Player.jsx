@@ -9,6 +9,8 @@ export default function Player() {
     song,
     toggle,
     isPlaying,
+    isBuffering,
+    playbackError,
     next,
     previous,
     position,
@@ -17,9 +19,13 @@ export default function Player() {
     shuffle,
     toggleShuffle,
   } = usePlayer();
+
   const router = useRouter();
 
   if (!song) return null;
+
+  const title = song.title || song.tittle || "Unknown Song";
+  const artist = song.artist || "Unknown Artist";
 
   const fmt = (s = 0) => {
     const m = Math.floor(s / 60);
@@ -34,28 +40,56 @@ export default function Player() {
       </Pressable>
 
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Image
-          source={{ uri: song.img }}
-          style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
-        />
+        {song.img ? (
+          <Image
+            source={{ uri: song.img }}
+            style={{ width: "70%", aspectRatio: 1, borderRadius: 8 }}
+          />
+        ) : (
+          <View
+            style={{
+              width: "70%",
+              aspectRatio: 1,
+              borderRadius: 8,
+              backgroundColor: "#3C2A20",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons name="musical-notes" size={64} color="#C7F464" />
+          </View>
+        )}
+
         <View style={{ alignSelf: "flex-start", marginTop: 24, marginLeft: 40 }}>
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>{song.tittle}</Text>
-          <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>{song.artist}</Text>
+          <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>
+            {title}
+          </Text>
+          <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>
+            {artist}
+          </Text>
           {song.recommended && (
-            <Text style={{ color: "#1DB954", fontSize: 11, marginTop: 4 }}>Recommended</Text>
+            <Text style={{ color: "#C7F464", fontSize: 11, marginTop: 4 }}>
+              Recommended
+            </Text>
           )}
         </View>
       </View>
-        <Pressable onPress={toggleShuffle}>
-          <Ionicons name="shuffle" size={28} color={shuffle ? "#1DB954" : "white"} />
-        </Pressable>
+
+      <Pressable onPress={toggleShuffle}>
+        <Ionicons
+          name="shuffle"
+          size={28}
+          color={shuffle ? "#C7F464" : "white"}
+        />
+      </Pressable>
+
       <View style={{ marginBottom: 5, marginTop: 10 }}>
         <Slider
           value={position}
           minimumValue={0}
           maximumValue={duration || 1}
           onSlidingComplete={seek}
-          minimumTrackTintColor="#1DB954"
+          minimumTrackTintColor="#C7F464"
           maximumTrackTintColor="#555"
           thumbTintColor="#fff"
         />
@@ -64,16 +98,43 @@ export default function Player() {
           <Text style={{ color: "#aaa", fontSize: 12 }}>{fmt(duration)}</Text>
         </View>
       </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginBottom: 40 }}>
+
+      {playbackError ? (
+        <Text style={{ color: "#ff8b8b", textAlign: "center", marginBottom: 10 }}>
+          {playbackError}
+        </Text>
+      ) : null}
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-around",
+          alignItems: "center",
+          marginBottom: 40,
+        }}
+      >
         <Pressable onPress={previous}>
           <Ionicons name="play-skip-back" size={36} color="white" />
         </Pressable>
+
         <Pressable
           onPress={toggle}
-          style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "white", alignItems: "center", justifyContent: "center" }}
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: "#C7F464",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="black" />
+          <Ionicons
+            name={isBuffering ? "hourglass-outline" : isPlaying ? "pause" : "play"}
+            size={32}
+            color="#3C2A20"
+          />
         </Pressable>
+
         <Pressable onPress={next}>
           <Ionicons name="play-skip-forward" size={36} color="white" />
         </Pressable>
