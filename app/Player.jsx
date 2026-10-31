@@ -24,7 +24,7 @@ export default function Player() {
 
   if (!song) return null;
 
-  const title = song.tittle || song.title || "Unknown Song";
+  const tittle = song.tittle || "Unknown Song";
   const artist = song.artist || "Unknown Artist";
 
   const fmt = (s = 0) => {
@@ -62,7 +62,7 @@ export default function Player() {
 
         <View style={{ alignSelf: "flex-start", marginTop: 24, marginLeft: 40 }}>
           <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>
-            {title}
+            {tittle}
           </Text>
           <Text style={{ color: "#aaa", fontSize: 12, marginTop: 4 }}>
             {artist}
