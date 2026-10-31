@@ -9,7 +9,7 @@ export function MiniPlayer() {
 
   if (!song) return null;
 
-  const title = song.title || song.tittle || "Unknown Song";
+  const title = song.tittle || song.title || "Unknown Song";
   const artist = song.artist || "Unknown Artist";
 
   return (
