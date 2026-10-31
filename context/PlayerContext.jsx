@@ -22,7 +22,7 @@ const normalizeSong = (song) => {
   if (!song) return null;
 
   const title =
-    song.title || song.tittle || song.song || "Unknown Song";
+    song.tittle || song.title || song.song || "Unknown Song";
 
   const artistValue =
     song.artist ||
@@ -44,7 +44,7 @@ const normalizeSong = (song) => {
 };
 
 const getRandomQuery = (song) => {
-  const title = song?.title || song?.tittle || "";
+  const title = song?.tittle || song?.title || "";
   const random =
     randomLetters[Math.floor(Math.random() * randomLetters.length)];
 
