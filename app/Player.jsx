@@ -24,7 +24,7 @@ export default function Player() {
 
   if (!song) return null;
 
-  const title = song.title || song.tittle || "Unknown Song";
+  const title = song.tittle || song.title || "Unknown Song";
   const artist = song.artist || "Unknown Artist";
 
   const fmt = (s = 0) => {
