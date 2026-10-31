@@ -131,7 +131,7 @@ export default function Search() {
                   style={{ color: "#1DB954", fontWeight: "bold" }}
                   numberOfLines={1}
                 >
-                  {item.tittle || item.title || item.song || "Unknown Song"}
+                  {item.tittle || item.song || "Unknown Song"}
                 </Text>
                 <Text style={{ color: "#aaa" }} numberOfLines={1}>
                   {item.artist || item.primary_artists || "Unknown Artist"}
