@@ -33,8 +33,8 @@ export function SongCard({
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor="#C7F464"
-          colors={["#C7F464"]}
+          tintColor="#1DB954"
+          colors={["#1DB954"]}
           progressBackgroundColor="#3C2A20"
         />
       }
@@ -43,7 +43,7 @@ export function SongCard({
       ListEmptyComponent={
         <View style={styles.empty}>
           {initialLoading ? (
-            <ActivityIndicator color="#C7F464" size="large" />
+            <ActivityIndicator color="#1DB954" size="large" />
           ) : (
             <Text style={styles.emptyText}>
               No songs found. Try refreshing.
@@ -54,7 +54,7 @@ export function SongCard({
       ListFooterComponent={
         loadingMore ? (
           <ActivityIndicator
-            color="#C7F464"
+            color="#1DB954"
             size="small"
             style={styles.footer}
           />
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   placeholderIcon: {
     fontSize: 45,
-    color: "#C7F464",
+    color: "#1DB954",
   },
   details: {
     paddingHorizontal: 10,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   artist: {
-    color: "#C7F464",
+    color: "#1DB954",
     fontSize: 12,
     marginTop: 5,
   },
