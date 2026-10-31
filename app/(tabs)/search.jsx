@@ -81,7 +81,7 @@ export default function Search() {
         value={search}
         onChangeText={setSearch}
       />
-      <View style={{ position: "absolute", top: 56, right: 45 }}>
+      <View style={{ position: "absolute", top: 58, right: 45 }}>
         {loading ? (
           <ActivityIndicator size="small" color="#1DB954" />
         ) : (

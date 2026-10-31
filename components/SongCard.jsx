@@ -1,22 +1,103 @@
-import { Text, View, Image, FlatList, Pressable, StyleSheet } from "react-native";
 
-export function SongCard({ songs, onPlay, onEndReached }) {
+import {
+  View,
+  Text,
+  Image,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+
+export function SongCard({
+  songs = [],
+  onPlay,
+  onEndReached,
+  refreshing,
+  onRefresh,
+  loadingMore,
+  initialLoading,
+  header,
+}) {
   return (
     <FlatList
+      style={styles.list}
       data={songs}
-      onEndReached={onEndReached}
-      onEndReachedThreshold={0.5}
       numColumns={2}
-      keyExtractor={(song) => song.id}
+      keyExtractor={(song) => String(song.id)}
       columnWrapperStyle={styles.row}
       contentContainerStyle={styles.grid}
       showsVerticalScrollIndicator={false}
-      renderItem={({ item: song, index }) => (
-        <Pressable style={styles.card} onPress={() => onPlay(songs, index)}>
-          <Image source={{ uri: song.img }} style={styles.cover} resizeMode="cover" />
+      ListHeaderComponent={header}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#1DB954"
+          colors={["#1DB954"]}
+          progressBackgroundColor="#3C2A20"
+        />
+      }
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      ListEmptyComponent={
+        <View style={styles.empty}>
+          {initialLoading ? (
+            <ActivityIndicator
+              color="#1DB954"
+              size="large"
+            />
+          ) : (
+            <Text style={styles.emptyText}>
+              No songs found. Try refreshing.
+            </Text>
+          )}
+        </View>
+      }
+      ListFooterComponent={
+        loadingMore ? (
+          <ActivityIndicator
+            color="#1DB954"
+            size="small"
+            style={styles.footer}
+          />
+        ) : null
+      }
+      renderItem={({ item: song }) => (
+        <Pressable
+          style={({ pressed }) => [
+            styles.card,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => onPlay?.(song)}
+        >
+          {song.img ? (
+            <Image
+              source={{ uri: song.img }}
+              style={styles.cover}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.placeholder}>
+              <Text style={styles.placeholderIcon}>♪</Text>
+            </View>
+          )}
+
           <View style={styles.details}>
-            <Text style={styles.tittle} numberOfLines={1}>{song.tittle}</Text>
-            <Text style={styles.artist} numberOfLines={1}>{song.artist}</Text>
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+            >
+              {song.tittle}
+            </Text>
+
+            <Text
+              style={styles.artist}
+              numberOfLines={1}
+            >
+              {song.artist}
+            </Text>
           </View>
         </Pressable>
       )}
@@ -25,11 +106,79 @@ export function SongCard({ songs, onPlay, onEndReached }) {
 }
 
 const styles = StyleSheet.create({
-  grid: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 130 },
-  row: { justifyContent: "space-between", marginBottom: 16 },
-  card: { width: "48%", backgroundColor: "#152114", borderRadius: 14, overflow: "hidden" },
-  cover: { width: "100%", height: 100 },
-  details: { paddingHorizontal: 11, paddingVertical: 12 },
-  tittle: { color: "#F7F1E3", fontSize: 15, fontWeight: "700" },
-  artist: { color: "#C7F464", fontSize: 12, marginTop: 5 },
+  list: {
+    flex: 1,
+    backgroundColor: "#111",
+  },
+
+  grid: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+    flexGrow: 1,
+  },
+
+  row: {
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+
+  card: {
+    width: "48%",
+    backgroundColor: "#3C2A20",
+    borderRadius: 13,
+    overflow: "hidden",
+  },
+
+  pressed: {
+    opacity: 0.75,
+  },
+
+  cover: {
+    width: "100%",
+    height: 120,
+  },
+
+  placeholder: {
+    width: "100%",
+    height: 120,
+    backgroundColor: "#7A5230",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  placeholderIcon: {
+    fontSize: 45,
+    color: "#1DB954",
+  },
+
+  details: {
+    paddingHorizontal: 10,
+    paddingVertical: 11,
+  },
+
+  title: {
+    color: "#F7F1E3",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+
+  artist: {
+    color: "#C7F464",
+    fontSize: 12,
+    marginTop: 5,
+  },
+
+  empty: {
+    padding: 40,
+    alignItems: "center",
+  },
+
+  emptyText: {
+    color: "#F7F1E3",
+    fontSize: 14,
+  },
+
+  footer: {
+    padding: 20,
+  },
 });
