@@ -46,8 +46,8 @@ export default function Search() {
         if (cancelled) return;
 
         const seen = new Set();
-        const unique = (response.data.data || []).filter((s) => {
-          const id = String(s.id);
+        const unique = (response.data.data || []).filter((song) => {
+          const id = String(song.id);
           if (seen.has(id)) return false;
           seen.add(id);
           return true;
@@ -81,9 +81,10 @@ export default function Search() {
         value={search}
         onChangeText={setSearch}
       />
+
       <View style={{ position: "absolute", top: 58, right: 45 }}>
         {loading ? (
-          <ActivityIndicator size="small" color="#1DB954" />
+          <ActivityIndicator size="small" color="#C7F464" />
         ) : (
           <Ionicons name="search" size={24} color="#aaa" />
         )}
@@ -110,18 +111,30 @@ export default function Search() {
           renderItem={({ item, index }) => (
             <Pressable
               onPress={() => playSong([item], 0)}
-              style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 14,
+              }}
             >
               <Image
-                source={{ uri: item.img }}
-                style={{ width: 50, height: 50, borderRadius: 4 }}
+                source={item.img ? { uri: item.img } : undefined}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 4,
+                  backgroundColor: "#3C2A20",
+                }}
               />
               <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text style={{ color: "#fff", fontWeight: "bold" }} numberOfLines={1}>
-                  {item.tittle}
+                <Text
+                  style={{ color: "#fff", fontWeight: "bold" }}
+                  numberOfLines={1}
+                >
+                  {item.title || item.tittle || item.song || "Unknown Song"}
                 </Text>
                 <Text style={{ color: "#aaa" }} numberOfLines={1}>
-                  {item.artist}
+                  {item.artist || item.primary_artists || "Unknown Artist"}
                 </Text>
               </View>
             </Pressable>
@@ -134,7 +147,7 @@ export default function Search() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#121212", padding: 30 },
-  title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
+  title: { color: "#C7F464", fontSize: 28, fontWeight: "bold" },
   subtitle: { color: "#aaa", marginTop: 10 },
   input: {
     backgroundColor: "#1e1e1e",
