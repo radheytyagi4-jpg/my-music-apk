@@ -21,8 +21,7 @@ const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
 const normalizeSong = (song) => {
   if (!song) return null;
 
-  const title =
-    song.tittle || song.title || song.song || "Unknown Song";
+  const tittle = song.tittle || song.song || "Unknown Song";
 
   const artistValue =
     song.artist ||
@@ -33,8 +32,7 @@ const normalizeSong = (song) => {
   return {
     ...song,
     id: String(song.id ?? song.songid ?? title),
-    title,
-    tittle: title,
+    tittle,
     artist: Array.isArray(artistValue)
       ? artistValue.join(", ")
       : artistValue,
@@ -44,11 +42,11 @@ const normalizeSong = (song) => {
 };
 
 const getRandomQuery = (song) => {
-  const title = song?.tittle || song?.title || "";
+  const tittle = song?.tittle || "";
   const random =
     randomLetters[Math.floor(Math.random() * randomLetters.length)];
 
-  return `${random} ${title}`.trim();
+  return `${random} ${tittle}`.trim();
 };
 
 const saveRecent = async (song) => {
