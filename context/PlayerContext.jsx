@@ -5,11 +5,12 @@ import {
   useContext,
   useRef,
 } from "react";
-import {
-  useAudioPlayer,
-  useAudioPlayerStatus,
-  setAudioModeAsync,
-} from "expo-audio";
+import TrackPlayer, {
+  State,
+  usePlaybackState,
+  useProgress,
+  Event,
+} from "react-native-track-player";
 import Axios from "axios";
 import { getUserId } from "../utils/session";
 import { baseUrl } from "../config.js";
@@ -53,7 +54,6 @@ const getRandomQuery = (song) => {
   const title = song?.title || song?.tittle || "";
   const random =
     randomLetters[Math.floor(Math.random() * randomLetters.length)];
-
   return `${random} ${title}`.trim();
 };
 
@@ -139,13 +139,23 @@ const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
   return fisherYates(found).slice(0, count);
 };
 
+// Convert your song object to TrackPlayer format
+const toTrack = (song) => ({
+  id: song.id,
+  url: song.audioUrl,
+  title: song.title || song.tittle || "Unknown Song",
+  artist: song.artist || "Unknown Artist",
+  artwork: song.img || undefined,
+});
+
 export function PlayerProvider({ children }) {
-  const player = useAudioPlayer(null);
-  const status = useAudioPlayerStatus(player);
+  const playbackState = usePlaybackState();
+  const progress = useProgress();
 
   const [queue, setQueue] = useState([]);
   const [index, setIndex] = useState(-1);
   const [shuffle, setShuffle] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
 
   const song = queue[index];
   const isLoadingNext = useRef(false);
@@ -160,17 +170,41 @@ export function PlayerProvider({ children }) {
     indexRef.current = index;
   }, [index]);
 
+  // Setup TrackPlayer once
   useEffect(() => {
-    setAudioModeAsync({
-      playsInSilentMode: true,
-      shouldPlayInBackground: true,
-      interruptionMode: "doNotMix",
-    }).catch((error) => {
-      console.log("Audio mode error:", error);
-    });
+    const setup = async () => {
+      try {
+        await TrackPlayer.setupPlayer();
+        await TrackPlayer.updateOptions({
+          capabilities: [
+            TrackPlayer.CAPABILITY_PLAY,
+            TrackPlayer.CAPABILITY_PAUSE,
+            TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
+            TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
+            TrackPlayer.CAPABILITY_STOP,
+          ],
+          compactCapabilities: [
+            TrackPlayer.CAPABILITY_PLAY,
+            TrackPlayer.CAPABILITY_PAUSE,
+            TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
+          ],
+        });
+        setIsPlayerReady(true);
+      } catch (e) {
+        console.log("TrackPlayer setup error:", e);
+      }
+    };
+
+    setup();
+
+    return () => {
+      TrackPlayer.reset();
+    };
   }, []);
 
-  const startPlayback = (list, i) => {
+  const startPlayback = async (list, i) => {
+    if (!isPlayerReady) return;
+
     const normalizedList = list.map(normalizeSong);
     const selectedSong = normalizedList[i];
 
@@ -179,18 +213,17 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    console.log("Trying to play:", selectedSong.audioUrl);
-
     try {
-      player.replace({ uri: selectedSong.audioUrl });
-      player.play();
+      await TrackPlayer.reset();
+      await TrackPlayer.add(normalizedList.map(toTrack));
+      await TrackPlayer.skip(i);
+      await TrackPlayer.play();
     } catch (error) {
       console.log("Audio playback error:", error);
       return;
     }
 
     playedRef.current.add(String(selectedSong.id));
-
     setQueue(normalizedList);
     setIndex(i);
     saveRecent(selectedSong);
@@ -274,11 +307,12 @@ export function PlayerProvider({ children }) {
     }
   };
 
-  const toggle = () => {
-    if (status.playing) {
-      player.pause();
-    } else if (song?.audioUrl) {
-      player.play();
+  const toggle = async () => {
+    const state = await TrackPlayer.getState();
+    if (state === State.Playing) {
+      await TrackPlayer.pause();
+    } else {
+      await TrackPlayer.play();
     }
   };
 
@@ -339,7 +373,8 @@ export function PlayerProvider({ children }) {
 
   const next = async () => {
     if (index < queue.length - 1) {
-      startPlayback(queue, index + 1);
+      await TrackPlayer.skipToNext();
+      setIndex((prev) => prev + 1);
       return;
     }
 
@@ -351,38 +386,54 @@ export function PlayerProvider({ children }) {
       const fresh = await fetchFreshSongs(song, queue);
 
       if (fresh.length > 0) {
-        startPlayback([...queue, ...fresh], queue.length);
+        const newQueue = [...queue, ...fresh];
+        setQueue(newQueue);
+        await TrackPlayer.add(fresh.map(toTrack));
+        await TrackPlayer.skipToNext();
+        setIndex(queue.length);
       }
     } finally {
       isLoadingNext.current = false;
     }
   };
 
-  const previous = () => {
+  const previous = async () => {
     if (index > 0) {
-      startPlayback(queue, index - 1);
+      await TrackPlayer.skipToPrevious();
+      setIndex((prev) => prev - 1);
     }
   };
 
-  const seek = (seconds) => {
-    player.seekTo(seconds);
+  const seek = async (seconds) => {
+    await TrackPlayer.seekTo(seconds);
   };
 
+  // Auto next when track ends
   useEffect(() => {
-    if (status.didJustFinish) {
-      next();
-    }
-  }, [status.didJustFinish]);
+    const listener = TrackPlayer.addEventListener(
+      Event.PlaybackQueueEnded,
+      () => {
+        next();
+      }
+    );
+
+    return () => listener.remove();
+  }, [index, queue]);
+
+  const isPlaying = playbackState.state === State.Playing;
+  const isBuffering =
+    playbackState.state === State.Buffering ||
+    playbackState.state === State.Connecting;
 
   return (
     <PlayerContext.Provider
       value={{
         song,
-        isPlaying: status.playing,
-        isBuffering: status.isBuffering,
-        playbackError: status.error || null,
-        position: status.currentTime,
-        duration: status.duration,
+        isPlaying,
+        isBuffering,
+        playbackError: null,
+        position: progress.position,
+        duration: progress.duration,
         shuffle,
         playSong,
         toggle,

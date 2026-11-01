@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  RefreshControl,
   ActivityIndicator,
 } from "react-native";
 
@@ -13,8 +12,6 @@ export function SongCard({
   songs = [],
   onPlay,
   onEndReached,
-  refreshing,
-  onRefresh,
   loadingMore,
   initialLoading,
   header,
@@ -29,16 +26,7 @@ export function SongCard({
       contentContainerStyle={styles.grid}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={header}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#1DB954"
-          colors={["#1DB954"]}
-          progressBackgroundColor="#3C2A20"
-        />
-      }
-      onEndReached={onEndReached}
+      onEndReached={onEndReached}   
       onEndReachedThreshold={0.5}
       ListEmptyComponent={
         <View style={styles.empty}>

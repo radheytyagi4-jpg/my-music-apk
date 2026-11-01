@@ -292,8 +292,6 @@ export default function Home() {
         songs={songs}
         onPlay={handlePlay}
         onEndReached={() => loadSongs("more")}
-        refreshing={refreshing}
-        onRefresh={() => loadSongs("refresh")}
         loadingMore={loadingMore}
         initialLoading={initialLoading}
         header={Header}
