@@ -170,8 +170,9 @@ export function PlayerProvider({ children }) {
     indexRef.current = index;
   }, [index]);
 
-  // Setup TrackPlayer once
   useEffect(() => {
+    let isMounted = true;
+
     const setup = async () => {
       try {
         await TrackPlayer.setupPlayer();
@@ -189,7 +190,10 @@ export function PlayerProvider({ children }) {
             TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
           ],
         });
-        setIsPlayerReady(true);
+
+        if (isMounted) {
+          setIsPlayerReady(true);
+        }
       } catch (e) {
         console.log("TrackPlayer setup error:", e);
       }
@@ -198,7 +202,7 @@ export function PlayerProvider({ children }) {
     setup();
 
     return () => {
-      TrackPlayer.reset();
+      isMounted = false;
     };
   }, []);
 

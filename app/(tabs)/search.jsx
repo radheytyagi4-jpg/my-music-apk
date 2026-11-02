@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   Pressable,
+  Keyboard,
   Image,
   ActivityIndicator,
 } from "react-native";
@@ -107,10 +108,14 @@ export default function Search() {
           keyExtractor={(item) => String(item.id)}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          onScrollBeginDrag={()=> Keyboard.dismiss()}
           contentContainerStyle={{ paddingBottom: 120 }}
           renderItem={({ item, index }) => (
             <Pressable
-              onPress={() => playSong([item], 0)}
+              onPress={() => {
+              Keyboard.dismiss();
+              playSong([item], 0);
+            }}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
