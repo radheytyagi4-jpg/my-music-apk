@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { View, Text, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { usePlayer } from "../context/PlayerContext.jsx";
+import { AddToPlaylist } from "../components/AddToPlaylist";
 
 export default function Player() {
   const {
@@ -21,6 +23,7 @@ export default function Player() {
   } = usePlayer();
 
   const router = useRouter();
+  const [showAdd, setShowAdd] = useState(false);
 
   if (!song) return null;
 
@@ -75,13 +78,25 @@ export default function Player() {
         </View>
       </View>
 
-      <Pressable onPress={toggleShuffle}>
-        <Ionicons
-          name="shuffle"
-          size={28}
-          color={shuffle ? "#1DB954" : "white"}
-        />
-      </Pressable>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Pressable onPress={toggleShuffle}>
+          <Ionicons
+            name="shuffle"
+            size={28}
+            color={shuffle ? "#1DB954" : "white"}
+          />
+        </Pressable>
+
+        <Pressable onPress={() => setShowAdd(true)} hitSlop={10}>
+          <Ionicons name="add-circle-outline" size={30} color="white" />
+        </Pressable>
+      </View>
 
       <View style={{ marginBottom: 5, marginTop: 10 }}>
         <Slider
@@ -139,6 +154,12 @@ export default function Player() {
           <Ionicons name="play-skip-forward" size={36} color="white" />
         </Pressable>
       </View>
+
+      <AddToPlaylist
+        visible={showAdd}
+        song={song}
+        onClose={() => setShowAdd(false)}
+      />
     </View>
   );
 }

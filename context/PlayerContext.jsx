@@ -17,7 +17,6 @@ import TrackPlayer, {
 } from "@rntp/player";
 
 import Axios from "axios";
-import { getUserId } from "../utils/session";
 import { baseUrl } from "../config.js";
 
 const PlayerContext = createContext(null);
@@ -81,43 +80,6 @@ const toTrack = (song) => ({
   artworkUrl: song.img || undefined,
 });
 
-
-// -------------------- RECENT HISTORY --------------------
-
-const saveRecent = async (song) => {
-  try {
-    const userId = await getUserId();
-
-    if (!userId) return;
-
-    await Axios.post(`${baseUrl}/recent`, {
-      userId,
-      song,
-    });
-  } catch (error) {
-    console.log(
-      "Save recent error:",
-      error.response?.data || error.message
-    );
-  }
-};
-
-const saveSearched = async (song) => {
-  try{
-    const userId = await getUserId;
-    if(!userId) return;
-
-    await Axios.post(`${baseUrl}/searched`, {
-      userId,
-      song,
-    });
-  } catch (error) {
-    console.log(
-      "Save searched error:",
-      error.response?.data || error.message
-    );
-  }
-};
 
 // -------------------- SHUFFLE HELPERS --------------------
 
@@ -331,8 +293,6 @@ export function PlayerProvider({ children }) {
       TrackPlayer.play();
 
       playedRef.current.add(String(selectedSong.id));
-
-      saveRecent(selectedSong);
     } catch (error) {
       setPlaybackError(
         error?.message || "Could not start playback"
@@ -720,7 +680,6 @@ export function PlayerProvider({ children }) {
         next,
         previous,
         seek,
-        saveSearched
       }}
     >
       {children}

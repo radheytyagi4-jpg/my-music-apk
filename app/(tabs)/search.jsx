@@ -16,6 +16,7 @@ import { getUserId } from "../../utils/session";
 import { Ionicons } from "@expo/vector-icons";
 import Axios from "axios";
 import { baseUrl } from "../../config.js";
+import { AddToPlaylist } from "../../components/AddToPlaylist";
 
 const saveSearched = async (song) => {
   try {
@@ -41,7 +42,7 @@ const loadSearched = async () => {
   }
 };
 
-const SongRow = ({ item, onPress, highlight }) => (
+const SongRow = ({ item, onPress, onAdd, highlight }) => (
   <Pressable
     onPress={onPress}
     style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
@@ -66,6 +67,11 @@ const SongRow = ({ item, onPress, highlight }) => (
         {item.artist || item.primary_artists || "Unknown Artist"}
       </Text>
     </View>
+    {onAdd ? (
+      <Pressable onPress={onAdd} hitSlop={10} style={{ padding: 6 }}>
+        <Ionicons name="add-circle-outline" size={26} color="#fff" />
+      </Pressable>
+    ) : null}
   </Pressable>
 );
 
@@ -76,6 +82,7 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchedSongs, setSearchedSongs] = useState([]);
+  const [addTarget, setAddTarget] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -167,6 +174,7 @@ export default function Search() {
                 <SongRow
                   item={item}
                   onPress={() => playSong(searchedSongs, index)}
+                  onAdd={() => setAddTarget(item)}
                 />
               )}
             />
@@ -194,7 +202,12 @@ export default function Search() {
         onScrollBeginDrag={() => Keyboard.dismiss()}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (
-          <SongRow item={item} highlight onPress={() => onPickResult(item)} />
+          <SongRow
+            item={item}
+            highlight
+            onPress={() => onPickResult(item)}
+            onAdd={() => setAddTarget(item)}
+          />
         )}
       />
     );
@@ -219,6 +232,12 @@ export default function Search() {
       </View>
 
       {content}
+
+      <AddToPlaylist
+        visible={!!addTarget}
+        song={addTarget}
+        onClose={() => setAddTarget(null)}
+      />
     </View>
   );
 }

@@ -40,14 +40,15 @@ export default function Layout() {
           }}
         />
         <Tabs.Screen
-          name="recent"
+          name="playlists"
           options={{
-            title: "Recent",
+            title: "Library",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="time-outline" size={size} color={color} />
+              <Ionicons name="albums-outline" size={size} color={color} />
             ),
           }}
         />
+        <Tabs.Screen name="playlist" options={{ href: null }} />
       </Tabs>
 
       <View style={{ position: "absolute", left: 0, right: 0, bottom: 65 }}>
