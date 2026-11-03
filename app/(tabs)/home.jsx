@@ -151,24 +151,155 @@ export default function Home() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const loading = useRef(false);
-  const lastQuery = useRef("");
+  // Keep a synchronous copy for duplicate checking.
+  const songsRef = useRef([]);
 
+  // Prevent simultaneous API requests.
+  const loading = useRef(false);
+
+  // Prevent repeating search queries until all have been used.
+  const usedQueries = useRef(new Set());
+
+  // Get a query that hasn't recently been used.
   const getRandomQuery = () => {
-    const availableQueries = queries.filter(
-      (query) => query !== lastQuery.current
+    let availableQueries = queries.filter(
+      (query) => !usedQueries.current.has(query)
     );
+
+    // Reset when all queries have been used.
+    if (availableQueries.length === 0) {
+      usedQueries.current.clear();
+      availableQueries = [...queries];
+    }
 
     const selected =
       availableQueries[
-      Math.floor(Math.random() * availableQueries.length)
+        Math.floor(Math.random() * availableQueries.length)
       ];
 
-    lastQuery.current = selected;
+    usedQueries.current.add(selected);
+
     return selected;
   };
 
-  const loadSongs = async (mode = "more", retryCount = 0) => {
+  // Normalize each API song.
+  const normalizeSong = (song, query, index) => {
+    const title = String(
+      song.title ||
+      song.tittle ||
+      song.song ||
+      song.name ||
+      "Unknown Song"
+    );
+
+    const rawArtist =
+      song.artist ||
+      song.primary_artists ||
+      song.singers ||
+      "Unknown Artist";
+
+    const artist = Array.isArray(rawArtist)
+      ? rawArtist.join(", ")
+      : String(rawArtist);
+
+    const audioUrl =
+      song.audioUrl ||
+      song.media_url ||
+      song.url ||
+      null;
+
+    const image =
+      song.img ||
+      song.image ||
+      song.thumbnail ||
+      song.image_url ||
+      null;
+
+    const id = String(
+      song.id ??
+      song.songid ??
+      song.mediaId ??
+      audioUrl ??
+      `${title}-${artist}`
+    );
+
+    return {
+      ...song,
+      id,
+      title,
+      tittle: title,
+      artist,
+      img: image,
+      audioUrl,
+    };
+  };
+
+  // Search API with 502 retry protection.
+  const fetchSongs = async (query) => {
+    let response;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await axios.get(
+          `${baseUrl}/songs/search`,
+          {
+            params: { q: query },
+            timeout: 20000,
+          }
+        );
+
+        break;
+      } catch (error) {
+        if (
+          error.response?.status !== 502 ||
+          attempt === 2
+        ) {
+          throw error;
+        }
+
+        console.log(
+          `502 error. Retry ${attempt + 1}/2`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2500)
+        );
+      }
+    }
+
+    if (!response) {
+      throw new Error("Search API returned no response");
+    }
+
+    const payload = response.data;
+
+    // Support different API response shapes.
+    const rawSongs = Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload?.songs)
+        ? payload.songs
+        : Array.isArray(payload?.results)
+          ? payload.results
+          : Array.isArray(payload)
+            ? payload
+            : [];
+
+    return rawSongs
+      .filter(
+        (song) => song && typeof song === "object"
+      )
+      .map((song, index) =>
+        normalizeSong(song, query, index)
+      )
+      .filter(
+        (song) =>
+          typeof song.audioUrl === "string" &&
+          song.audioUrl.trim().length > 0
+      );
+  };
+
+  // Main loading function.
+  const loadSongs = async (mode = "more") => {
     if (loading.current) return;
 
     loading.current = true;
@@ -182,63 +313,78 @@ export default function Home() {
     }
 
     try {
-      const query = getRandomQuery();
+      // For pagination, search multiple artists/categories
+      // until we find enough songs or use three queries.
+      const maxQueries = mode === "more" ? 3 : 1;
 
-      const response = await axios.get(`${baseUrl}/songs/search`, {
-        params: { q: query },
-        timeout: 20000, // 20 seconds
-      });
+      const existingIds = new Set(
+        mode === "more"
+          ? songsRef.current.map((song) => String(song.id))
+          : []
+      );
 
-      const newSongs = (response.data?.data || [])
-        .map((song, index) => {
-          const title =
-            song.title ||
-            song.tittle ||
-            song.song ||
-            song.name ||
-            "Unknown Song";
+      const collectedSongs = [];
+      const collectedIds = new Set();
 
-          return {
-            ...song,
-            id: String(song.id || `${query}-${index}`),
-            title,
-            tittle: title,
-            artist:
-              song.artist ||
-              song.primary_artists ||
-              "Unknown Artist",
-            img: song.img || song.image || null,
-            audioUrl: song.audioUrl || song.media_url || null,
-          };
-        })
-        .filter((song) => song.audioUrl);
+      for (let attempt = 0; attempt < maxQueries; attempt++) {
+        const query = getRandomQuery();
 
-      setSongs((previous) => {
-        if (mode === "refresh" || mode === "initial") {
-          return newSongs;
+        console.log("Searching:", query);
+
+        const results = await fetchSongs(query);
+
+        console.log("Playable results:", results.length);
+
+        for (const song of results) {
+          const id = String(song.id);
+
+          if (
+            existingIds.has(id) ||
+            collectedIds.has(id)
+          ) {
+            continue;
+          }
+
+          collectedIds.add(id);
+          collectedSongs.push(song);
         }
 
-        const existingIds = new Set(previous.map((song) => song.id));
-        const freshSongs = newSongs.filter(
-          (song) => !existingIds.has(song.id)
-        );
-
-        return [...previous, ...freshSongs];
-      });
-    } catch (error) {
-      const isBadGateway =
-        error.response?.status === 502 ||
-        (typeof error.response?.data === "string" &&
-          error.response.data.includes("Bad Gateway"));
-
-      // Retry up to 2 times on 502 (cold start)
-      if (isBadGateway && retryCount < 2) {
-        console.log(`502 received, retrying... (${retryCount + 1})`);
-        loading.current = false;
-        await new Promise((r) => setTimeout(r, 2500)); // wait 2.5s
-        return loadSongs(mode, retryCount + 1);
+        // Stop once we have enough new songs.
+        if (
+          mode !== "more" ||
+          collectedSongs.length >= 8
+        ) {
+          break;
+        }
       }
 
+      console.log(
+        "Total new songs found:",
+        collectedSongs.length
+      );
+
+      if (mode === "initial" || mode === "refresh") {
+        songsRef.current = collectedSongs;
+        setSongs(collectedSongs);
+      } else if (collectedSongs.length > 0) {
+        const updatedSongs = [
+          ...songsRef.current,
+          ...collectedSongs,
+        ];
+
+        songsRef.current = updatedSongs;
+        setSongs(updatedSongs);
+      }
+
+      if (
+        mode === "more" &&
+        collectedSongs.length === 0
+      ) {
+        console.log(
+          "No new songs found. Try loading again."
+        );
+      }
+    } catch (error) {
       console.log(
         "Song loading error:",
         error.response?.data || error.message
@@ -251,18 +397,22 @@ export default function Home() {
     }
   };
 
+  // Initial Home loading.
   useEffect(() => {
     loadSongs("initial");
   }, []);
 
+  // Play selected song.
   const handlePlay = (song) => {
     playSong(song);
   };
 
+  // Home header.
   const Header = (
     <View style={styles.header}>
       <View>
         <Text style={styles.heading}>Snoopy</Text>
+
         <Text style={styles.subtitle}>
           Discover your music
         </Text>
@@ -271,10 +421,13 @@ export default function Home() {
       <Pressable
         style={styles.refreshButton}
         onPress={() => loadSongs("refresh")}
-        disabled={refreshing}
+        disabled={refreshing || loadingMore}
       >
         {refreshing ? (
-          <ActivityIndicator color="#1DB954" size="small" />
+          <ActivityIndicator
+            color="#1DB954"
+            size="small"
+          />
         ) : (
           <Ionicons
             name="refresh"

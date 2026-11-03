@@ -9,11 +9,65 @@ import {
   Image,
   ActivityIndicator,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { usePlayer } from "../../context/PlayerContext";
+import { getUserId } from "../../utils/session";
 import { Ionicons } from "@expo/vector-icons";
 import Axios from "axios";
 import { baseUrl } from "../../config.js";
+
+const saveSearched = async (song) => {
+  try {
+    const userId = await getUserId();
+    if (!userId) return;
+
+    await Axios.post(`${baseUrl}/searched`, { userId, song });
+  } catch (error) {
+    console.log("Save searched error:", error.response?.data || error.message);
+  }
+};
+
+const loadSearched = async () => {
+  try {
+    const userId = await getUserId();
+    if (!userId) return [];
+
+    const res = await Axios.get(`${baseUrl}/searched`, { params: { userId } });
+    return res.data.data || [];
+  } catch (error) {
+    console.log("Load searched error:", error.response?.data || error.message);
+    return [];
+  }
+};
+
+const SongRow = ({ item, onPress, highlight }) => (
+  <Pressable
+    onPress={onPress}
+    style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+  >
+    <Image
+      source={item.img ? { uri: item.img } : undefined}
+      style={{
+        width: 50,
+        height: 50,
+        borderRadius: 4,
+        backgroundColor: "#3C2A20",
+      }}
+    />
+    <View style={{ marginLeft: 12, flex: 1 }}>
+      <Text
+        style={{ color: highlight ? "#1DB954" : "#fff", fontWeight: "bold" }}
+        numberOfLines={1}
+      >
+        {item.tittle || item.song || "Unknown Song"}
+      </Text>
+      <Text style={{ color: "#aaa" }} numberOfLines={1}>
+        {item.artist || item.primary_artists || "Unknown Artist"}
+      </Text>
+    </View>
+  </Pressable>
+);
 
 export default function Search() {
   const { playSong } = usePlayer();
@@ -21,6 +75,19 @@ export default function Search() {
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchedSongs, setSearchedSongs] = useState([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadSearched().then((list) => {
+        if (active) setSearchedSongs(list);
+      });
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   useEffect(() => {
     const query = search.trim();
@@ -73,6 +140,66 @@ export default function Search() {
 
   const hasQuery = search.trim().length > 0;
 
+  const onPickResult = (item) => {
+    Keyboard.dismiss();
+    playSong([item], 0);
+    saveSearched(item);
+    setSearchedSongs((prev) => [
+      item,
+      ...prev.filter((s) => String(s.id) !== String(item.id)),
+    ].slice(0, 20));
+  };
+
+  let content;
+
+  if (!hasQuery) {
+    content = (
+      <View style={{ flex: 1 }}>
+        <Text style={styles.title}>Search Music</Text>
+        {searchedSongs.length > 0 ? (
+          <>
+            <Text style={styles.section}>Recent searches</Text>
+            <FlatList
+              data={searchedSongs}
+              keyExtractor={(item) => String(item.id)}
+              contentContainerStyle={{ paddingTop: 8, paddingBottom: 130 }}
+              renderItem={({ item, index }) => (
+                <SongRow
+                  item={item}
+                  onPress={() => playSong(searchedSongs, index)}
+                />
+              )}
+            />
+          </>
+        ) : (
+          <Text style={styles.subtitle}>
+            Find your favourite songs and artists on Snoopy
+          </Text>
+        )}
+      </View>
+    );
+  } else if (error) {
+    content = <Text style={styles.subtitle}>{error}</Text>;
+  } else if (songs.length === 0 && !loading) {
+    content = (
+      <Text style={styles.subtitle}>No songs found for "{search.trim()}"</Text>
+    );
+  } else {
+    content = (
+      <FlatList
+        data={songs}
+        keyExtractor={(item) => String(item.id)}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onScrollBeginDrag={() => Keyboard.dismiss()}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        renderItem={({ item }) => (
+          <SongRow item={item} highlight onPress={() => onPickResult(item)} />
+        )}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       <TextInput
@@ -91,61 +218,7 @@ export default function Search() {
         )}
       </View>
 
-      {!hasQuery ? (
-        <View>
-          <Text style={styles.title}>Search Music</Text>
-          <Text style={styles.subtitle}>
-            Find your favourite songs and artists on Snoopy
-          </Text>
-        </View>
-      ) : error ? (
-        <Text style={styles.subtitle}>{error}</Text>
-      ) : songs.length === 0 && !loading ? (
-        <Text style={styles.subtitle}>No songs found for "{search.trim()}"</Text>
-      ) : (
-        <FlatList
-          data={songs}
-          keyExtractor={(item) => String(item.id)}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          onScrollBeginDrag={()=> Keyboard.dismiss()}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item, index }) => (
-            <Pressable
-              onPress={() => {
-              Keyboard.dismiss();
-              playSong([item], 0);
-            }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 14,
-              }}
-            >
-              <Image
-                source={item.img ? { uri: item.img } : undefined}
-                style={{
-                  width: 50,
-                  height: 50,
-                  borderRadius: 4,
-                  backgroundColor: "#3C2A20",
-                }}
-              />
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text
-                  style={{ color: "#1DB954", fontWeight: "bold" }}
-                  numberOfLines={1}
-                >
-                  {item.tittle || item.song || "Unknown Song"}
-                </Text>
-                <Text style={{ color: "#aaa" }} numberOfLines={1}>
-                  {item.artist || item.primary_artists || "Unknown Artist"}
-                </Text>
-              </View>
-            </Pressable>
-          )}
-        />
-      )}
+      {content}
     </View>
   );
 }
@@ -153,6 +226,7 @@ export default function Search() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#121212", padding: 30 },
   title: { color: "#1DB954", fontSize: 28, fontWeight: "bold" },
+  section: { color: "#fff", fontSize: 18, fontWeight: "bold", marginTop: 20 },
   subtitle: { color: "#aaa", marginTop: 10 },
   input: {
     backgroundColor: "#1e1e1e",

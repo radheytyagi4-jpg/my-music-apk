@@ -1,3 +1,4 @@
+
 import {
   View,
   Text,
@@ -26,8 +27,10 @@ export function SongCard({
       contentContainerStyle={styles.grid}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={header}
-      onEndReached={onEndReached}   
+
+      onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
+
       ListEmptyComponent={
         <View style={styles.empty}>
           {initialLoading ? (
@@ -39,15 +42,26 @@ export function SongCard({
           )}
         </View>
       }
+
       ListFooterComponent={
-        loadingMore ? (
-          <ActivityIndicator
-            color="#1DB954"
-            size="small"
-            style={styles.footer}
-          />
+        songs.length > 0 ? (
+          <View style={styles.footer}>
+            {loadingMore ? (
+              <ActivityIndicator color="#1DB954" size="large" />
+            ) : (
+              <Pressable
+                onPress={onEndReached}
+                style={styles.loadButton}
+              >
+                <Text style={styles.loadButtonText}>
+                  Load More Songs
+                </Text>
+              </Pressable>
+            )}
+          </View>
         ) : null
       }
+
       renderItem={({ item: song }) => (
         <Pressable
           style={({ pressed }) => [
@@ -145,6 +159,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    padding: 20,
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+  loadButton: {
+    backgroundColor: "#1DB954",
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  loadButtonText: {
+    color: "#111",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });

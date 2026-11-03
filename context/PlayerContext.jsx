@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useEffect,
@@ -5,12 +6,16 @@ import {
   useContext,
   useRef,
 } from "react";
+
 import TrackPlayer, {
-  State,
-  usePlaybackState,
-  useProgress,
   Event,
-} from "react-native-track-player";
+  PlaybackState,
+  PlayerCommand,
+  usePlaybackState,
+  useIsPlaying,
+  useProgress,
+} from "@rntp/player";
+
 import Axios from "axios";
 import { getUserId } from "../utils/session";
 import { baseUrl } from "../config.js";
@@ -18,6 +23,12 @@ import { baseUrl } from "../config.js";
 const PlayerContext = createContext(null);
 
 const randomLetters = ["a", "x", "m", "dj", "lo", "sa", "re"];
+
+// Prevent setupPlayer from being called more than once.
+let playerSetupComplete = false;
+
+
+// -------------------- SONG NORMALIZATION --------------------
 
 const normalizeSong = (song) => {
   if (!song) return null;
@@ -50,16 +61,33 @@ const normalizeSong = (song) => {
   };
 };
 
+
 const getRandomQuery = (song) => {
   const title = song?.title || song?.tittle || "";
+
   const random =
     randomLetters[Math.floor(Math.random() * randomLetters.length)];
+
   return `${random} ${title}`.trim();
 };
+
+
+// Convert Snoopy song data into V5 MediaItem format.
+const toTrack = (song) => ({
+  mediaId: String(song.id),
+  url: song.audioUrl,
+  title: song.title || song.tittle || "Unknown Song",
+  artist: song.artist || "Unknown Artist",
+  artworkUrl: song.img || undefined,
+});
+
+
+// -------------------- RECENT HISTORY --------------------
 
 const saveRecent = async (song) => {
   try {
     const userId = await getUserId();
+
     if (!userId) return;
 
     await Axios.post(`${baseUrl}/recent`, {
@@ -67,48 +95,94 @@ const saveRecent = async (song) => {
       song,
     });
   } catch (error) {
-    console.log("Save recent error:", error.response?.data || error.message);
+    console.log(
+      "Save recent error:",
+      error.response?.data || error.message
+    );
   }
 };
+
+const saveSearched = async (song) => {
+  try{
+    const userId = await getUserId;
+    if(!userId) return;
+
+    await Axios.post(`${baseUrl}/searched`, {
+      userId,
+      song,
+    });
+  } catch (error) {
+    console.log(
+      "Save searched error:",
+      error.response?.data || error.message
+    );
+  }
+};
+
+// -------------------- SHUFFLE HELPERS --------------------
 
 const fisherYates = (arr) => {
   const a = [...arr];
+
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
+
     [a[i], a[j]] = [a[j], a[i]];
   }
+
   return a;
 };
 
+
 const smartShuffle = (songs) => {
   const groups = {};
-  songs.forEach((s) => {
-    const key = s.artist || "unknown";
+
+  songs.forEach((song) => {
+    const key = song.artist || "unknown";
+
     if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
+
+    groups[key].push(song);
   });
 
   const placed = [];
+
   Object.values(groups).forEach((group) => {
-    const g = fisherYates(group);
-    const offset = Math.random() / g.length;
-    g.forEach((s, i) => {
+    const shuffled = fisherYates(group);
+
+    const offset = Math.random() / shuffled.length;
+
+    shuffled.forEach((song, i) => {
       placed.push({
-        s,
-        pos: i / g.length + offset + (Math.random() * 0.2) / g.length,
+        song,
+        pos:
+          i / shuffled.length +
+          offset +
+          (Math.random() * 0.2) / shuffled.length,
       });
     });
   });
 
-  return placed.sort((a, b) => a.pos - b.pos).map((p) => p.s);
+  return placed
+    .sort((a, b) => a.pos - b.pos)
+    .map((item) => item.song);
 };
 
-const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
+
+// -------------------- RECOMMENDATIONS --------------------
+
+const fetchRecommendations = async (
+  sourceSongs,
+  excludeIds,
+  count
+) => {
   const picks = fisherYates(sourceSongs).slice(0, 3);
+
   const found = [];
 
-  for (const s of picks) {
-    const artist = (s.artist || "").split(",")[0].trim();
+  for (const song of picks) {
+    const artist = (song.artist || "").split(",")[0].trim();
+
     if (!artist) continue;
 
     try {
@@ -116,16 +190,20 @@ const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
         params: { q: artist },
       });
 
-      (res.data.data || []).forEach((r) => {
-        const normalized = normalizeSong(r);
+      (res.data.data || []).forEach((rawSong) => {
+        const normalized = normalizeSong(rawSong);
+
         const id = normalized?.id;
 
         if (
           normalized?.audioUrl &&
           !excludeIds.has(id) &&
-          !found.some((f) => String(f.id) === id)
+          !found.some((item) => String(item.id) === id)
         ) {
-          found.push({ ...normalized, recommended: true });
+          found.push({
+            ...normalized,
+            recommended: true,
+          });
         }
       });
     } catch (error) {
@@ -139,203 +217,313 @@ const fetchRecommendations = async (sourceSongs, excludeIds, count) => {
   return fisherYates(found).slice(0, count);
 };
 
-// Convert your song object to TrackPlayer format
-const toTrack = (song) => ({
-  id: song.id,
-  url: song.audioUrl,
-  title: song.title || song.tittle || "Unknown Song",
-  artist: song.artist || "Unknown Artist",
-  artwork: song.img || undefined,
-});
+
+// -------------------- PLAYER PROVIDER --------------------
 
 export function PlayerProvider({ children }) {
   const playbackState = usePlaybackState();
+  const isPlaying = useIsPlaying();
   const progress = useProgress();
 
   const [queue, setQueue] = useState([]);
   const [index, setIndex] = useState(-1);
-  const [shuffle, setShuffle] = useState(false);
+
+  const [shuffle, setShuffle] = useState(true);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [playbackError, setPlaybackError] = useState(null);
 
-  const song = queue[index];
-  const isLoadingNext = useRef(false);
-
-  const shuffleRef = useRef(false);
-  const originalRef = useRef([]);
+  const queueRef = useRef([]);
   const indexRef = useRef(-1);
+
+  const isLoadingNext = useRef(false);
+  const shuffleRef = useRef(true);
+  const originalRef = useRef([]);
+
   const sessionRef = useRef(0);
   const playedRef = useRef(new Set());
 
-  useEffect(() => {
-    indexRef.current = index;
-  }, [index]);
+  const nextRef = useRef(null);
+
+  const song = queue[index] || null;
+
+  // Keep JS queue and React state synchronized.
+  const commitQueue = (newQueue) => {
+    queueRef.current = newQueue;
+    setQueue(newQueue);
+  };
+
+
+  // -------------------- PLAYER SETUP --------------------
 
   useEffect(() => {
-    let isMounted = true;
-
-    const setup = async () => {
-      try {
-        await TrackPlayer.setupPlayer();
-        await TrackPlayer.updateOptions({
-          capabilities: [
-            TrackPlayer.CAPABILITY_PLAY,
-            TrackPlayer.CAPABILITY_PAUSE,
-            TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
-            TrackPlayer.CAPABILITY_SKIP_TO_PREVIOUS,
-            TrackPlayer.CAPABILITY_STOP,
-          ],
-          compactCapabilities: [
-            TrackPlayer.CAPABILITY_PLAY,
-            TrackPlayer.CAPABILITY_PAUSE,
-            TrackPlayer.CAPABILITY_SKIP_TO_NEXT,
-          ],
-        });
-
-        if (isMounted) {
-          setIsPlayerReady(true);
-        }
-      } catch (e) {
-        console.log("TrackPlayer setup error:", e);
-      }
-    };
-
-    setup();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const startPlayback = async (list, i) => {
-    if (!isPlayerReady) return;
-
-    const normalizedList = list.map(normalizeSong);
-    const selectedSong = normalizedList[i];
-
-    if (!selectedSong?.audioUrl) {
-      console.log("Cannot play song: audio URL is missing", selectedSong);
+    if (playerSetupComplete) {
+      setIsPlayerReady(true);
       return;
     }
 
     try {
-      await TrackPlayer.reset();
-      await TrackPlayer.add(normalizedList.map(toTrack));
-      await TrackPlayer.skip(i);
-      await TrackPlayer.play();
-    } catch (error) {
-      console.log("Audio playback error:", error);
-      return;
-    }
-
-    playedRef.current.add(String(selectedSong.id));
-    setQueue(normalizedList);
-    setIndex(i);
-    saveRecent(selectedSong);
-  };
-
-  const injectRecommendations = async (baseList) => {
-    const session = ++sessionRef.current;
-    const exclude = new Set(baseList.map((s) => String(s.id)));
-    const count = Math.min(5, Math.max(1, Math.floor(baseList.length / 3)));
-
-    const recs = await fetchRecommendations(baseList, exclude, count);
-
-    if (!recs.length || session !== sessionRef.current || !shuffleRef.current) {
-      return;
-    }
-
-    setQueue((prev) => {
-      const out = [...prev];
-      recs.forEach((r, k) => {
-        const at = Math.min(indexRef.current + 3 + k * 4, out.length);
-        out.splice(at, 0, r);
+      TrackPlayer.setupPlayer({
+        contentType: "music",
+        handleAudioBecomingNoisy: true,
+        android: {
+          wakeMode: "network",
+        },
       });
-      return out;
-    });
+
+      TrackPlayer.setCommands({
+        capabilities: [
+          PlayerCommand.PlayPause,
+          PlayerCommand.Next,
+          PlayerCommand.Previous,
+          PlayerCommand.Stop,
+        ],
+      });
+
+      playerSetupComplete = true;
+
+      setIsPlayerReady(true);
+
+      console.log("Snoopy Track Player ready!");
+    } catch (error) {
+      playerSetupComplete = false;
+
+      setPlaybackError(
+        error?.message || "Player setup failed"
+      );
+
+      console.log("TrackPlayer setup error:", error);
+    }
+  }, []);
+
+
+  // -------------------- START PLAYBACK --------------------
+
+  const startPlayback = (list, selectedIndex = 0) => {
+    if (!isPlayerReady) {
+      console.log("TrackPlayer is not ready yet.");
+      return;
+    }
+
+    const normalizedList = list
+      .map(normalizeSong)
+      .filter((item) => item?.audioUrl);
+
+    const selectedSong = normalizedList[selectedIndex];
+
+    if (!selectedSong) {
+      console.log("Cannot play song: audio URL is missing.");
+      return;
+    }
+
+    try {
+      commitQueue(normalizedList);
+
+      indexRef.current = selectedIndex;
+      setIndex(selectedIndex);
+
+      setPlaybackError(null);
+
+      TrackPlayer.setMediaItems(
+        normalizedList.map(toTrack),
+        selectedIndex
+      );
+
+      TrackPlayer.play();
+
+      playedRef.current.add(String(selectedSong.id));
+
+      saveRecent(selectedSong);
+    } catch (error) {
+      setPlaybackError(
+        error?.message || "Could not start playback"
+      );
+
+      console.log("Audio playback error:", error);
+    }
   };
+
+
+  // -------------------- PLAY SONG --------------------
 
   const playSong = (songsOrSong, requestedIndex = 0) => {
     const isPlaylist = Array.isArray(songsOrSong);
-    const list = (isPlaylist ? songsOrSong : [songsOrSong])
+
+    const rawList = (
+      isPlaylist ? songsOrSong : [songsOrSong]
+    )
       .filter(Boolean)
       .map(normalizeSong);
-    const selectedIndex = isPlaylist ? requestedIndex : 0;
 
-    if (!list[selectedIndex]?.audioUrl) {
-      console.log("Cannot play song: audio URL is missing", list[selectedIndex]);
+    const requestedSong = rawList[requestedIndex];
+
+    if (!requestedSong?.audioUrl) {
+      console.log(
+        "Cannot play song: audio URL is missing",
+        requestedSong
+      );
       return;
     }
+
+    const selectedIndex = rawList
+      .slice(0, requestedIndex)
+      .filter((item) => item?.audioUrl).length;
+
+    const list = rawList.filter((item) => item?.audioUrl);
 
     originalRef.current = list;
 
     if (shuffleRef.current) {
       const first = list[selectedIndex];
+
       const rest = smartShuffle(
-        list.filter((_, k) => k !== selectedIndex)
+        list.filter((_, i) => i !== selectedIndex)
       );
+
       startPlayback([first, ...rest], 0);
+
       injectRecommendations(list);
     } else {
       sessionRef.current++;
+
       startPlayback(list, selectedIndex);
     }
   };
 
+
+  // -------------------- SHUFFLE TOGGLE --------------------
+
   const toggleShuffle = () => {
     const turningOn = !shuffleRef.current;
+
     shuffleRef.current = turningOn;
+
     setShuffle(turningOn);
 
-    if (!song) return;
+    const currentQueue = queueRef.current;
+    const currentIndex = indexRef.current;
+    const currentSong = currentQueue[currentIndex];
+
+    if (!currentSong) return;
 
     if (turningOn) {
-      const base = queue.filter((s) => !s.recommended);
+      const base = currentQueue.filter(
+        (item) => !item.recommended
+      );
+
       originalRef.current = base;
 
-      const rest = smartShuffle(base.filter((s) => s.id !== song.id));
-      setQueue([song, ...rest]);
-      setIndex(0);
+      const rest = smartShuffle(
+        base.filter(
+          (item) => item.id !== currentSong.id
+        )
+      );
+
+      startPlayback([currentSong, ...rest], 0);
+
       injectRecommendations(base);
     } else {
       sessionRef.current++;
+
       const original = originalRef.current;
-      const at = original.findIndex((s) => s.id === song.id);
+
+      const at = original.findIndex(
+        (item) => item.id === currentSong.id
+      );
 
       if (at === -1) {
-        setQueue([song, ...original]);
-        setIndex(0);
+        startPlayback([currentSong, ...original], 0);
       } else {
-        setQueue(original);
-        setIndex(at);
+        startPlayback(original, at);
       }
     }
   };
 
-  const toggle = async () => {
-    const state = await TrackPlayer.getState();
-    if (state === State.Playing) {
-      await TrackPlayer.pause();
+
+  // -------------------- INJECT RECOMMENDATIONS --------------------
+
+  const injectRecommendations = async (baseList) => {
+    const session = ++sessionRef.current;
+
+    const exclude = new Set(
+      baseList.map((item) => String(item.id))
+    );
+
+    const count = Math.min(
+      5,
+      Math.max(1, Math.floor(baseList.length / 3))
+    );
+
+    const recs = await fetchRecommendations(
+      baseList,
+      exclude,
+      count
+    );
+
+    if (
+      !recs.length ||
+      session !== sessionRef.current ||
+      !shuffleRef.current
+    ) {
+      return;
+    }
+
+    const updatedQueue = [...queueRef.current];
+
+    recs.forEach((item, k) => {
+      const at = Math.min(
+        indexRef.current + 3 + k * 4,
+        updatedQueue.length
+      );
+
+      updatedQueue.splice(at, 0, item);
+
+      TrackPlayer.insertMediaItems(at, [toTrack(item)]);
+    });
+
+    commitQueue(updatedQueue);
+  };
+
+
+  // -------------------- PLAY / PAUSE --------------------
+
+  const toggle = () => {
+    if (!isPlayerReady) return;
+
+    if (isPlaying) {
+      TrackPlayer.pause();
     } else {
-      await TrackPlayer.play();
+      TrackPlayer.play();
     }
   };
+
+
+  // -------------------- FETCH FRESH SONGS --------------------
 
   const fetchFreshSongs = async (currentSong, currentQueue) => {
     const seen = new Set([
       ...playedRef.current,
-      ...currentQueue.map((s) => String(s.id)),
+      ...currentQueue.map((item) => String(item.id)),
     ]);
 
     try {
-      const response = await Axios.get(`${baseUrl}/songs/discover`, {
-        params: { count: 12 },
-      });
+      const response = await Axios.get(
+        `${baseUrl}/songs/discover`,
+        {
+          params: { count: 12 },
+        }
+      );
 
       const fresh = (response.data.data || [])
         .map(normalizeSong)
-        .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
+        .filter(
+          (item) =>
+            item?.audioUrl &&
+            !seen.has(String(item.id))
+        );
 
-      if (fresh.length > 0) return smartShuffle(fresh);
+      if (fresh.length > 0) {
+        return smartShuffle(fresh);
+      }
     } catch (error) {
       console.log(
         "Discover error:",
@@ -343,9 +531,17 @@ export function PlayerProvider({ children }) {
       );
     }
 
-    const firstArtist = (s) => (s?.artist || "").split(",")[0].trim();
-    const artists = currentQueue.map(firstArtist).filter(Boolean);
-    const randomArtist = artists[Math.floor(Math.random() * artists.length)];
+    const firstArtist = (item) =>
+      (item?.artist || "").split(",")[0].trim();
+
+    const artists = currentQueue
+      .map(firstArtist)
+      .filter(Boolean);
+
+    const randomArtist =
+      artists.length > 0
+        ? artists[Math.floor(Math.random() * artists.length)]
+        : "";
 
     const queries = [
       firstArtist(currentSong),
@@ -353,17 +549,26 @@ export function PlayerProvider({ children }) {
       getRandomQuery(currentSong),
     ].filter(Boolean);
 
-    for (const q of queries) {
+    for (const query of queries) {
       try {
-        const response = await Axios.get(`${baseUrl}/songs/search`, {
-          params: { q },
-        });
+        const response = await Axios.get(
+          `${baseUrl}/songs/search`,
+          {
+            params: { q: query },
+          }
+        );
 
         const fresh = (response.data.data || [])
           .map(normalizeSong)
-          .filter((item) => item?.audioUrl && !seen.has(String(item.id)));
+          .filter(
+            (item) =>
+              item?.audioUrl &&
+              !seen.has(String(item.id))
+          );
 
-        if (fresh.length > 0) return smartShuffle(fresh);
+        if (fresh.length > 0) {
+          return smartShuffle(fresh);
+        }
       } catch (error) {
         console.log(
           "Fresh songs error:",
@@ -375,81 +580,155 @@ export function PlayerProvider({ children }) {
     return [];
   };
 
+
+  // -------------------- NEXT SONG --------------------
+
   const next = async () => {
-    if (index < queue.length - 1) {
-      await TrackPlayer.skipToNext();
-      setIndex((prev) => prev + 1);
+    const currentQueue = queueRef.current;
+    const currentIndex = indexRef.current;
+
+    if (currentIndex < currentQueue.length - 1) {
+      TrackPlayer.skipToNext();
       return;
     }
 
-    if (!song || isLoadingNext.current) return;
+    const currentSong = currentQueue[currentIndex];
+
+    if (!currentSong || isLoadingNext.current) return;
 
     isLoadingNext.current = true;
 
     try {
-      const fresh = await fetchFreshSongs(song, queue);
+      const fresh = await fetchFreshSongs(
+        currentSong,
+        currentQueue
+      );
 
       if (fresh.length > 0) {
-        const newQueue = [...queue, ...fresh];
-        setQueue(newQueue);
-        await TrackPlayer.add(fresh.map(toTrack));
-        await TrackPlayer.skipToNext();
-        setIndex(queue.length);
+        const newQueue = [...currentQueue, ...fresh];
+
+        const nextIndex = currentQueue.length;
+
+        commitQueue(newQueue);
+
+        TrackPlayer.addMediaItems(
+          fresh.map(toTrack)
+        );
+
+        indexRef.current = nextIndex;
+        setIndex(nextIndex);
+
+        TrackPlayer.skipToNext();
+        TrackPlayer.play();
+
+        fresh.forEach((item) => {
+          playedRef.current.add(String(item.id));
+        });
       }
+    } catch (error) {
+      console.log("Next song error:", error);
     } finally {
       isLoadingNext.current = false;
     }
   };
 
-  const previous = async () => {
-    if (index > 0) {
-      await TrackPlayer.skipToPrevious();
-      setIndex((prev) => prev - 1);
+
+  // -------------------- PREVIOUS SONG --------------------
+
+  const previous = () => {
+    if (indexRef.current > 0) {
+      TrackPlayer.skipToPrevious();
     }
   };
 
-  const seek = async (seconds) => {
-    await TrackPlayer.seekTo(seconds);
+
+  // -------------------- SEEK --------------------
+
+  const seek = (seconds) => {
+    TrackPlayer.seekTo(seconds);
   };
 
-  // Auto next when track ends
+
+  // Keep the latest next function available to the event listener.
+  nextRef.current = next;
+
+
+  // -------------------- TRACK PLAYER EVENTS --------------------
+
   useEffect(() => {
-    const listener = TrackPlayer.addEventListener(
-      Event.PlaybackQueueEnded,
-      () => {
-        next();
+    if (!isPlayerReady) return;
+
+    const transitionListener = TrackPlayer.addEventListener(
+      Event.MediaItemTransition,
+      ({ index: newIndex }) => {
+        indexRef.current = newIndex;
+        setIndex(newIndex);
       }
     );
 
-    return () => listener.remove();
-  }, [index, queue]);
+    const stateListener = TrackPlayer.addEventListener(
+      Event.PlaybackStateChanged,
+      ({ state }) => {
+        if (state === PlaybackState.Ended) {
+          nextRef.current?.();
+        }
+      }
+    );
 
-  const isPlaying = playbackState.state === State.Playing;
+    const errorListener = TrackPlayer.addEventListener(
+      Event.PlaybackError,
+      ({ code, message }) => {
+        const errorMessage = `${code}: ${message}`;
+
+        setPlaybackError(errorMessage);
+
+        console.log("Playback error:", errorMessage);
+      }
+    );
+
+    return () => {
+      transitionListener.remove();
+      stateListener.remove();
+      errorListener.remove();
+    };
+  }, [isPlayerReady]);
+
+
+  // -------------------- PLAYER STATUS --------------------
+
   const isBuffering =
-    playbackState.state === State.Buffering ||
-    playbackState.state === State.Connecting;
+    playbackState === PlaybackState.Buffering;
+
 
   return (
     <PlayerContext.Provider
       value={{
         song,
+
         isPlaying,
         isBuffering,
-        playbackError: null,
+        playbackError,
+
         position: progress.position,
         duration: progress.duration,
+
         shuffle,
+
         playSong,
         toggle,
         toggleShuffle,
         next,
         previous,
         seek,
+        saveSearched
       }}
     >
       {children}
     </PlayerContext.Provider>
   );
 }
+
+
+// -------------------- CUSTOM HOOK --------------------
 
 export const usePlayer = () => useContext(PlayerContext);
