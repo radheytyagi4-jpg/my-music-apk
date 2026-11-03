@@ -30,6 +30,7 @@ export default function Layout() {
             ),
           }}
         />
+
         <Tabs.Screen
           name="search"
           options={{
@@ -39,6 +40,7 @@ export default function Layout() {
             ),
           }}
         />
+
         <Tabs.Screen
           name="playlists"
           options={{
@@ -48,11 +50,29 @@ export default function Layout() {
             ),
           }}
         />
-        <Tabs.Screen name="playlist" options={{ href: null }} />
+
+        {/* Hidden route */}
+        <Tabs.Screen
+          name="recent"
+          options={{ href: null }}
+        />
+
+        {/* Playlist detail – not a tab */}
+        <Tabs.Screen
+          name="playlist"
+          options={{ href: null }}
+        />
       </Tabs>
 
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: 65 }}>
-      <MiniPlayer/>
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 65,
+        }}
+      >
+        <MiniPlayer />
       </View>
     </View>
   );

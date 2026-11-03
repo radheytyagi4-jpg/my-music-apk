@@ -202,6 +202,7 @@ export function PlayerProvider({ children }) {
   const originalRef = useRef([]);
 
   const sessionRef = useRef(0);
+  const queueSessionRef = useRef(0);
   const playedRef = useRef(new Set());
 
   const nextRef = useRef(null);
@@ -265,6 +266,8 @@ export function PlayerProvider({ children }) {
       console.log("TrackPlayer is not ready yet.");
       return;
     }
+
+    queueSessionRef.current++;
 
     const normalizedList = list
       .map(normalizeSong)
@@ -541,12 +544,11 @@ export function PlayerProvider({ children }) {
   };
 
 
-  // -------------------- NEXT SONG --------------------
-
   const next = async () => {
     const currentQueue = queueRef.current;
     const currentIndex = indexRef.current;
 
+    // Play the next existing song
     if (currentIndex < currentQueue.length - 1) {
       TrackPlayer.skipToNext();
       return;
@@ -556,6 +558,10 @@ export function PlayerProvider({ children }) {
 
     if (!currentSong || isLoadingNext.current) return;
 
+    // Remember which queue requested these songs
+    const requestSession = queueSessionRef.current;
+    const currentSongId = String(currentSong.id);
+
     isLoadingNext.current = true;
 
     try {
@@ -564,10 +570,27 @@ export function PlayerProvider({ children }) {
         currentQueue
       );
 
-      if (fresh.length > 0) {
-        const newQueue = [...currentQueue, ...fresh];
+      // Ignore results from an older playback session
+      if (requestSession !== queueSessionRef.current) {
+        return;
+      }
 
-        const nextIndex = currentQueue.length;
+      // Verify the current queue hasn't changed
+      const latestQueue = queueRef.current;
+      const latestIndex = indexRef.current;
+      const latestSong = latestQueue[latestIndex];
+
+      if (
+        latestIndex !== currentIndex ||
+        !latestSong ||
+        String(latestSong.id) !== currentSongId
+      ) {
+        return;
+      }
+
+      if (fresh.length > 0) {
+        const newQueue = [...latestQueue, ...fresh];
+        const nextIndex = latestQueue.length;
 
         commitQueue(newQueue);
 
@@ -591,9 +614,6 @@ export function PlayerProvider({ children }) {
       isLoadingNext.current = false;
     }
   };
-
-
-  // -------------------- PREVIOUS SONG --------------------
 
   const previous = () => {
     if (indexRef.current > 0) {
