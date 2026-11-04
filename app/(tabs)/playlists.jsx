@@ -40,7 +40,10 @@ export default function Playlists() {
   const [createError, setCreateError] = useState("");
 
   const open = (id) =>
-    router.push({ pathname: "/playlist", params: { id: String(id) } });
+    router.push({
+      pathname: "/playlist",
+      params: { id: String(id) },
+    });
 
   const loadMine = useCallback(async () => {
     try {

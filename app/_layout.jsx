@@ -4,11 +4,15 @@ import { PlayerProvider } from "../context/PlayerContext";
 export default function RootLayout() {
   return (
     <PlayerProvider>
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Register" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="Player" options={{ presentation: "modal" }} />
-    </Stack>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Register" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="playlist" />
+        <Stack.Screen
+          name="Player"
+          options={{ presentation: "modal" }}
+        />
+      </Stack>
     </PlayerProvider>
   );
 }

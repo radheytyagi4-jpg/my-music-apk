@@ -11,12 +11,19 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+
 import { useCallback, useState } from "react";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
+
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
-import { usePlayer } from "../../context/PlayerContext";
-import { VISIBILITY, VisibilityChips } from "../../components/PlaylistRow";
+
+import { usePlayer } from "../context/PlayerContext";
+import { VISIBILITY, VisibilityChips } from "../components/PlaylistRow";
+
 import {
   getPlaylist,
   updatePlaylist,
@@ -26,7 +33,7 @@ import {
   unfollowPlaylist,
   toPlayableSongs,
   errorMessage,
-} from "../../utils/playlistApi";
+} from "../utils/playlistApi";
 
 export default function PlaylistDetail() {
   const router = useRouter();
@@ -74,7 +81,7 @@ export default function PlaylistDetail() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/playlists");
+      router.replace("/(tabs)/playlists");
     }
   };
 

@@ -57,11 +57,6 @@ export default function Layout() {
           options={{ href: null }}
         />
 
-        {/* Playlist detail – not a tab */}
-        <Tabs.Screen
-          name="playlist"
-          options={{ href: null }}
-        />
       </Tabs>
 
       <View
